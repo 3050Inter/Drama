@@ -1,22 +1,23 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
 
 export default function Page() {
   const [date, setDate] = useState("2026-07-08");
+  const [open, setOpen] = useState(false);
 
   const [summary, setSummary] = useState({
-    sales: 0,
+    sales: 10000,
     expense: 0,
-    profit: 0,
+    profit: 10000,
   });
 
-  const [transactions, setTransactions] = useState([]);
+  const [list, setList] = useState([
+    { id: "1", type: "매출", method: "카드", amount: 10000, memo: "테스트" }
+  ]);
 
-  /* -------------------------
-     LOAD DASHBOARD (MOCK or API)
-  --------------------------*/
-  const loadDashboard = async () => {
+  const reload = async () => {
     setSummary({
       sales: 10000,
       expense: 0,
@@ -24,123 +25,60 @@ export default function Page() {
     });
   };
 
-  /* -------------------------
-     LOAD TRANSACTIONS (MOCK)
-  --------------------------*/
-  const loadTransactions = async () => {
-    setTransactions([
-      {
-        id: "1",
-        type: "매출",
-        method: "카드",
-        amount: 10000,
-        memo: "테스트",
-      },
-    ]);
-  };
-
   useEffect(() => {
-    loadDashboard();
-    loadTransactions();
+    reload();
   }, [date]);
 
-  /* -------------------------
-     DELETE
-  --------------------------*/
-  const handleDelete = async (id: string) => {
-    setTransactions((prev) => prev.filter((t: any) => t.id !== id));
+  const remove = (id) => {
+    setList(prev => prev.filter(v => v.id !== id));
   };
 
   return (
-    <div className="min-h-screen bg-[#0B1220] text-white flex flex-col items-center">
+    <div className="min-h-screen flex flex-col items-center bg-[#0B1220]">
 
-      {/* HEADER */}
-      <div className="w-full max-w-md px-4 pt-6">
+      <div className="w-full max-w-md p-4">
 
-        <div className="flex items-center justify-center gap-2 mb-1">
-          <div className="text-2xl">🎬</div>
-          <h1 className="text-xl font-bold">
-            드라마 <span className="text-green-400">LIVE</span>
-          </h1>
+        <div className="text-center text-2xl font-bold">
+          🎬 드라마 LIVE
         </div>
 
-        <div className="flex items-center justify-between bg-[#111A2E] rounded-xl p-3 mt-3">
+        <div className="mt-4 flex justify-between bg-[#111A2E] p-3 rounded-xl">
           <button>‹</button>
-
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="bg-transparent text-center"
-          />
-
+          <input type="date" value={date} onChange={e=>setDate(e.target.value)} />
           <button>›</button>
         </div>
-      </div>
 
-      {/* SUMMARY */}
-      <div className="w-full max-w-md px-4 mt-4 space-y-3">
-
-        <div className="bg-green-500 rounded-xl p-5">
-          <div className="text-sm">오늘 순이익</div>
-          <div className="text-2xl font-bold">
-            ₩ {summary.profit.toLocaleString()}
-          </div>
+        <div className="mt-4 bg-green-500 p-5 rounded-xl">
+          오늘 순이익: ₩{summary.profit}
         </div>
 
-        <div className="bg-[#111A2E] rounded-xl p-4">
-          총매출 ₩ {summary.sales.toLocaleString()}
+        <div className="mt-2 bg-[#111A2E] p-3 rounded-xl">
+          총매출: ₩{summary.sales}
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="mt-4 space-y-2">
 
-          <div className="bg-[#111A2E] p-3 rounded-xl">카드 ₩ 10,000</div>
-          <div className="bg-[#111A2E] p-3 rounded-xl">현금 ₩ 0</div>
-          <div className="bg-[#111A2E] p-3 rounded-xl">계좌 ₩ 0</div>
-          <div className="bg-[#111A2E] p-3 rounded-xl">
-            총지출 ₩ {summary.expense.toLocaleString()}
-          </div>
+          {list.map(item => (
+            <div key={item.id} className="bg-[#111A2E] p-3 rounded-xl flex justify-between">
+              <div>
+                <div>{item.method}</div>
+                <div className="text-xs text-gray-400">{item.memo}</div>
+              </div>
 
-        </div>
-      </div>
-
-      {/* LIST */}
-      <div className="w-full max-w-md px-4 mt-4 space-y-2">
-
-        {transactions.map((t: any) => (
-          <div
-            key={t.id}
-            className="bg-[#111A2E] p-4 rounded-xl flex justify-between items-center"
-          >
-            <div>
-              <div className="font-bold">{t.method}</div>
-              <div className="text-xs text-gray-400">{t.memo}</div>
+              <div className="text-right">
+                <div>₩{item.amount}</div>
+                <button className="text-red-400 text-xs" onClick={()=>remove(item.id)}>삭제</button>
+              </div>
             </div>
+          ))}
 
-            <div className="text-right">
-              <div className="font-bold">₩ {t.amount}</div>
-              <button
-                onClick={() => handleDelete(t.id)}
-                className="text-red-400 text-xs"
-              >
-                삭제
-              </button>
-            </div>
-          </div>
-        ))}
+        </div>
 
       </div>
 
-      {/* FLOAT BUTTON */}
       <button
-        className="
-          fixed bottom-8 left-1/2 -translate-x-1/2
-          w-16 h-16 rounded-full
-          bg-gradient-to-br from-green-400 to-green-600
-          text-white text-3xl
-          shadow-xl flex items-center justify-center
-          active:scale-95 transition
-        "
+        onClick={()=>setOpen(true)}
+        className="fixed bottom-6 left-1/2 -translate-x-1/2 w-16 h-16 rounded-full bg-green-500 text-3xl"
       >
         +
       </button>

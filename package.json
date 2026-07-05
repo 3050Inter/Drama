@@ -1,6 +1,6 @@
 
 {
-  "name": "drama-live",
+  "name": "drama-live-v4",
   "version": "1.0.0",
   "private": true,
   "scripts": {
@@ -12,5 +12,10 @@
     "next": "latest",
     "react": "latest",
     "react-dom": "latest"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.0",
+    "postcss": "^8",
+    "autoprefixer": "^10"
   }
 }
