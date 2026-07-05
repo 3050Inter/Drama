@@ -1,18 +1,16 @@
-# 드라마 가계부 V1.0.0
+# 🎭 드라마 가계부 V1
 
-7080 라이브 **드라마** 내부용 가계부 프로젝트입니다.
+7080 라이브 드라마 전용 영업 마감 가계부입니다.
 
-## 현재 버전
+## 기능
+- 로그인 없음
+- 날짜별 조회
+- 이전날 / 다음날 이동
+- 매출 / 지출 입력
+- 카드 / 현금 / 계좌 합계
+- 거래 수정 / 삭제
+- 월별 조회
+- Google Sheets + Apps Script 연동
 
-V1.0.0 - Next.js 기본 프로젝트 / 로그인 화면 / 대시보드 뼈대 / 거래 입력 UI
-
-## 배포 순서
-
-1. 이 폴더 안의 파일 전체를 GitHub `Drama` 저장소에 업로드
-2. Vercel에서 GitHub 저장소 Import
-3. Framework는 Next.js 자동 감지
-4. Deploy 클릭
-
-## 다음 패치
-
-V1.1.0 - Google Apps Script API 연동 + 실제 비밀번호 로그인
+## Apps Script
+`apps-script/Code.gs` 내용을 Google Apps Script에 붙여넣고 웹앱으로 배포하세요.
