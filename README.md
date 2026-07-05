@@ -1,17 +1,18 @@
-# 안다미로 직원관리 V11
+# 드라마 가계부 V1.0.0
+
+7080 라이브 **드라마** 내부용 가계부 프로젝트입니다.
+
+## 현재 버전
+
+V1.0.0 - Next.js 기본 프로젝트 / 로그인 화면 / 대시보드 뼈대 / 거래 입력 UI
 
 ## 배포 순서
-1. GitHub 저장소에 이 프로젝트 전체 업로드
-2. Vercel Import 후 Deploy
-3. Apps Script에 `apps-script-v11.gs` 전체 붙여넣기
-4. 웹앱 새 버전 배포
-5. Vercel Environment Variable 등록
-   - `NEXT_PUBLIC_API_URL` = Apps Script `/exec` 주소
-6. Vercel Redeploy
 
-## V11 핵심
-- 첫 화면은 dashboard API만 호출
-- 탭별 데이터만 별도 호출
-- 저장 후 해당 탭만 갱신
-- 빠른실행 버튼 정상 작동
-- 인센티브 수기조정 즉시 반영
+1. 이 폴더 안의 파일 전체를 GitHub `Drama` 저장소에 업로드
+2. Vercel에서 GitHub 저장소 Import
+3. Framework는 Next.js 자동 감지
+4. Deploy 클릭
+
+## 다음 패치
+
+V1.1.0 - Google Apps Script API 연동 + 실제 비밀번호 로그인
