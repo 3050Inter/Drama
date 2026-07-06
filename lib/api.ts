@@ -94,3 +94,8 @@ export async function deleteTransaction(id: string) {
     id,
   });
 }
+import type { ExpenseCategory } from "./types";
+
+export async function getExpenseCategories() {
+  return getJson<ApiResult<{ rows: ExpenseCategory[] }>>("categories");
+}
