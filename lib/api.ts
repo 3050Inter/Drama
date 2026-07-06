@@ -1,15 +1,15 @@
 import type { Dashboard, PaymentMethod, Transaction, TransactionType } from "./types";
 
 // Apps Script 웹앱 배포 후 /exec URL을 여기에 붙여넣으세요.
-export const API_URL = "";
+export const API_URL: string = "";
 
 type ApiResult<T> = {
   ok: boolean;
   error?: string;
 } & T;
 
-function hasApiUrl() {
-  return API_URL && API_URL.startsWith("https://script.google.com/");
+function hasApiUrl(): boolean {
+  return API_URL.startsWith("https://script.google.com/");
 }
 
 async function getJson<T>(action: string, params?: Record<string, string>) {
