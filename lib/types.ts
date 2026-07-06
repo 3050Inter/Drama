@@ -46,14 +46,14 @@ export interface LaborEntry {
   employee: string;
   tableNo: string;
   tc: number;
-  amount: number;
+  amount?: number;
   memo: string;
 }
 
 export interface LaborSummaryByEmployee {
   employee: string;
   tc: number;
-  amount: number;
+  amount?: number;
 }
 
 export interface MonthlySummary extends Dashboard {

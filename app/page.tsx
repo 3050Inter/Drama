@@ -166,7 +166,6 @@ function DashboardView({ data }: { data: Dashboard }) {
       <div className="grid grid-cols-2 gap-3">
         {box("총매출", data.totalSales, "text-green-400")}
         {box("총지출", data.totalExpense, "text-red-400")}
-        {box("TC 인건비", data.laborExpense || 0, "text-pink-400")}
         {box("현재 미수금", data.receivableBalance || 0, "text-yellow-400")}
       </div>
 
@@ -410,7 +409,6 @@ function MonthlyPage() {
           ["월 매출", summary.totalSales, "text-green-400"],
           ["월 지출", summary.totalExpense, "text-red-400"],
           ["월 순이익", summary.profit, "text-blue-400"],
-          ["TC 인건비", summary.laborExpense, "text-pink-400"],
         ].map(([title, value, cls]: any) => (
           <div key={title} className="rounded-3xl bg-[#111A2E] p-4">
             <div className="text-sm text-slate-300">{title}</div>
@@ -429,14 +427,13 @@ function MonthlyPage() {
       </div>
 
       <div className="rounded-3xl bg-[#111A2E] p-4">
-        <div className="font-black">직원별 인건비</div>
+        <div className="font-black">직원별 TC</div>
         {!labor.byEmployee.length && <div className="mt-3 text-sm text-slate-400">인건비 내역이 없습니다.</div>}
         <div className="mt-3 grid grid-cols-2 gap-3">
           {labor.byEmployee.map((item) => (
             <div key={item.employee} className="rounded-2xl bg-slate-800 p-3">
               <div className="font-black">{item.employee}</div>
               <div className="text-sm text-slate-300">TC {item.tc}</div>
-              <div className="font-black text-pink-300">₩ {money(item.amount)}</div>
             </div>
           ))}
         </div>
@@ -466,7 +463,6 @@ function LaborPage({ date, onChanged }: { date: string; onChanged: () => Promise
   const [employee, setEmployee] = useState("");
   const [tableNo, setTableNo] = useState("");
   const [tc, setTc] = useState("");
-  const [amount, setAmount] = useState("");
   const [memo, setMemo] = useState("");
   const [rows, setRows] = useState<LaborEntry[]>([]);
   const [summary, setSummary] = useState({ totalTc: 0, totalAmount: 0, byEmployee: [] as LaborSummaryByEmployee[] });
@@ -490,24 +486,22 @@ function LaborPage({ date, onChanged }: { date: string; onChanged: () => Promise
   }, [date]);
 
   const save = async () => {
-    const value = Number(amount.replace(/,/g, ""));
     const tcValue = Number(tc.replace(/,/g, ""));
 
     if (!employee) {
       alert("직원을 선택해주세요.");
       return;
     }
-    if (!value) {
-      alert("금액을 입력해주세요.");
+    if (!tcValue) {
+      alert("TC를 입력해주세요.");
       return;
     }
 
     try {
       setSaving(true);
-      await addLabor({ date, employee, tableNo, tc: tcValue || 0, amount: value, memo });
+      await addLabor({ date, employee, tableNo, tc: tcValue, memo });
       setTableNo("");
       setTc("");
-      setAmount("");
       setMemo("");
       await load();
       await onChanged();
@@ -517,7 +511,7 @@ function LaborPage({ date, onChanged }: { date: string; onChanged: () => Promise
   };
 
   const remove = async (id: string) => {
-    if (!confirm("인건비 내역을 삭제할까요? 자동 생성된 지출도 같이 삭제됩니다.")) return;
+    if (!confirm("인건비 내역을 삭제할까요?")) return;
     await deleteLabor(id);
     await load();
     await onChanged();
@@ -526,9 +520,8 @@ function LaborPage({ date, onChanged }: { date: string; onChanged: () => Promise
   return (
     <div className="space-y-4">
       <div className="rounded-3xl bg-pink-500 p-5">
-        <div className="text-sm font-bold opacity-90">오늘 TC 인건비</div>
-        <div className="mt-1 text-3xl font-black">₩ {money(summary.totalAmount)}</div>
-        <div className="mt-1 text-sm">TC {summary.totalTc}</div>
+        <div className="text-sm font-bold opacity-90">오늘 TC</div>
+        <div className="mt-1 text-3xl font-black">TC {summary.totalTc}</div>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
@@ -536,7 +529,6 @@ function LaborPage({ date, onChanged }: { date: string; onChanged: () => Promise
           <div key={item.employee} className="rounded-3xl bg-[#111A2E] p-4">
             <div className="font-black">{item.employee}</div>
             <div className="mt-1 text-sm text-slate-300">TC {item.tc}</div>
-            <div className="mt-1 font-black text-pink-300">₩ {money(item.amount)}</div>
           </div>
         ))}
       </div>
@@ -548,7 +540,6 @@ function LaborPage({ date, onChanged }: { date: string; onChanged: () => Promise
         </select>
         <input value={tableNo} onChange={(e) => setTableNo(e.target.value)} placeholder="테이블번호" className="mt-3 h-12 w-full rounded-2xl bg-slate-800 px-4 text-white outline-none" />
         <input inputMode="numeric" value={tc} onChange={(e) => setTc(e.target.value.replace(/[^0-9]/g, ""))} placeholder="TC" className="mt-3 h-12 w-full rounded-2xl bg-slate-800 px-4 text-white outline-none" />
-        <input inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^0-9]/g, ""))} placeholder="금액" className="mt-3 h-12 w-full rounded-2xl bg-slate-800 px-4 text-white outline-none" />
         <input value={memo} onChange={(e) => setMemo(e.target.value)} placeholder="메모" className="mt-3 h-12 w-full rounded-2xl bg-slate-800 px-4 text-white outline-none" />
         <button disabled={saving} onClick={save} className="mt-4 h-14 w-full rounded-2xl bg-pink-500 text-lg font-black text-white disabled:opacity-60">
           {saving ? "저장 중..." : "인건비 저장"}
@@ -568,8 +559,7 @@ function LaborPage({ date, onChanged }: { date: string; onChanged: () => Promise
                   {item.memo && <div className="mt-1 text-sm text-slate-400">📝 {item.memo}</div>}
                 </div>
                 <div className="text-right">
-                  <div className="font-black text-pink-300">₩ {money(item.amount)}</div>
-                  <button onClick={() => remove(item.id)} className="mt-2 inline-flex items-center gap-1 text-xs text-red-400">
+                  <button onClick={() => remove(item.id)} className="inline-flex items-center gap-1 text-xs text-red-400">
                     <Trash2 size={14} />삭제
                   </button>
                 </div>

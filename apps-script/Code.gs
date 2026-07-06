@@ -197,8 +197,11 @@ function summarize_(rows) {
       if (r.method === '계좌') bankSales += amount;
     }
     if (r.type === '지출') {
-      totalExpense += amount;
-      if (r.category === 'TC인건비' || r.method === '인건비') laborExpense += amount;
+      if (r.category === 'TC인건비' || r.method === '인건비') {
+        laborExpense += amount;
+      } else {
+        totalExpense += amount;
+      }
     }
   });
   return { totalSales, totalExpense, profit: totalSales - totalExpense, cardSales, cashSales, bankSales, laborExpense, transactionCount: rows.length };
@@ -410,30 +413,19 @@ function getLabor_(date) {
 
 function addLabor_(data) {
   ensureLaborHeader_();
-  ensureTransactionHeader_();
   const laborId = makeId_('LABOR');
-  const transactionId = 'TX-' + laborId;
   const date = String(data.date || todayKst_()).slice(0, 10);
   const employee = String(data.employee || '');
   const tableNo = String(data.tableNo || '');
   const tc = Number(data.tc || 0);
-  const amount = parseAmount_(data.amount);
   const memo = String(data.memo || '');
-  const transactionMemo = [employee, tableNo ? tableNo + '번' : '', 'TC' + tc, memo].filter(Boolean).join(' / ');
 
-  sh_(SHEETS.labor).appendRow([date, employee, tableNo, tc, amount, memo, laborId, transactionId]);
+  // V1.0.8: 인건비는 금액 없이 TC만 저장합니다.
+  // 거래내역 지출 자동 생성도 하지 않으므로 전체 지출에 잡히지 않습니다.
+  sh_(SHEETS.labor).appendRow([date, employee, tableNo, tc, 0, memo, laborId, '']);
+  invalidateDate_(date);
 
-  addTransaction_({
-    id: transactionId,
-    date,
-    type: '지출',
-    method: '인건비',
-    amount,
-    category: 'TC인건비',
-    memo: transactionMemo,
-  });
-
-  return { ok: true, id: laborId, transactionId };
+  return { ok: true, id: laborId };
 }
 
 function deleteLabor_(id) {
@@ -442,9 +434,9 @@ function deleteLabor_(id) {
   const values = sheet.getDataRange().getValues();
   for (let i = 1; i < values.length; i++) {
     if (String(values[i][6]) === String(id)) {
-      const tx = String(values[i][7] || '');
+      const date = values[i][0] || todayKst_();
       sheet.deleteRow(i + 1);
-      if (tx) deleteTransaction_(tx);
+      invalidateDate_(date);
       return { ok: true };
     }
   }

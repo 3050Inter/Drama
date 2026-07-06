@@ -97,9 +97,8 @@ export const addLabor = (data: {
   employee: string;
   tableNo: string;
   tc: number;
-  amount: number;
   memo: string;
-}) => postJson<ApiResult<{ id?: string; transactionId?: string }>>({ action: "addLabor", data });
+}) => postJson<ApiResult<{ id?: string }>>({ action: "addLabor", data });
 
 export const deleteLabor = (id: string) =>
   postJson<ApiResult<Record<string, never>>>({ action: "deleteLabor", id });
