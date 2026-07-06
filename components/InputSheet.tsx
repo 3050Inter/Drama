@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import type { PaymentMethod, TransactionType } from "@/lib/types";
+import { useEffect, useState } from "react";
+import type { ExpenseCategory, PaymentMethod, TransactionType } from "@/lib/types";
+import { getExpenseCategories } from "@/lib/api";
 
 interface Props {
   open: boolean;
@@ -23,12 +24,40 @@ export default function InputSheet({ open, date, onClose, onSave }: Props) {
   const [amount, setAmount] = useState("");
   const [memo, setMemo] = useState("");
   const [category, setCategory] = useState("");
+  const [categories, setCategories] = useState<ExpenseCategory[]>([]);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+
+    getExpenseCategories()
+      .then((res) => {
+        const rows = res.rows || [];
+        setCategories(rows);
+        if (rows.length && !category) {
+          setCategory(rows[0].name);
+        }
+      })
+      .catch(() => {
+        const fallback = [
+          { name: "주류매입", active: "Y", order: 1 },
+          { name: "안주재료", active: "Y", order: 2 },
+          { name: "인건비", active: "Y", order: 3 },
+          { name: "월세", active: "Y", order: 4 },
+          { name: "공과금", active: "Y", order: 5 },
+          { name: "비품", active: "Y", order: 6 },
+          { name: "기타지출", active: "Y", order: 7 },
+        ];
+        setCategories(fallback);
+        setCategory(fallback[0].name);
+      });
+  }, [open]);
 
   if (!open) return null;
 
   const save = async () => {
     const value = Number(String(amount).replace(/,/g, ""));
+
     if (!value) {
       alert("금액을 입력해주세요.");
       return;
@@ -36,18 +65,19 @@ export default function InputSheet({ open, date, onClose, onSave }: Props) {
 
     try {
       setSaving(true);
+
       await onSave({
         date,
         type,
         method,
         amount: value,
-        category,
+        category: type === "지출" ? category : "",
         memo,
       });
 
       setAmount("");
       setMemo("");
-      setCategory("");
+      setCategory(categories[0]?.name || "");
       setType("매출");
       setMethod("카드");
       onClose();
@@ -103,12 +133,17 @@ export default function InputSheet({ open, date, onClose, onSave }: Props) {
           />
 
           {type === "지출" && (
-            <input
+            <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              placeholder="지출항목"
               className="mt-3 h-12 w-full rounded-xl bg-slate-800 px-4 text-white outline-none"
-            />
+            >
+              {categories.map((item) => (
+                <option key={item.name} value={item.name}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
           )}
 
           <input
