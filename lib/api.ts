@@ -1,5 +1,5 @@
 import type {Dashboard,DailySales,Employee,ExpenseCategory,LaborEntry,LaborSummaryByEmployee,MonthlySummary,PaymentMethod,Receivable,ReceivableSummary,Transaction,TransactionType} from "./types";
-export const API_URL: string = "";
+export const API_URL: string = "https://script.google.com/macros/s/AKfycbwFp7piFkt36NMRF9PNAyM-8j5MSfJs5o0mya1oH9-Q_cUV-QZvaj7-KQ0-PQvCUfK6iQ/exec";
 type ApiResult<T>={ok:boolean;error?:string}&T;
 function hasApiUrl(){return API_URL.startsWith("https://script.google.com/")}
 async function getJson<T>(action:string,params?:Record<string,string>){if(!hasApiUrl())throw new Error("API_URL_EMPTY");const q=new URLSearchParams({action,...(params||{})});const r=await fetch(`${API_URL}?${q}`,{method:"GET",cache:"no-store"});if(!r.ok)throw new Error("API 요청 실패");return r.json() as Promise<T>}
