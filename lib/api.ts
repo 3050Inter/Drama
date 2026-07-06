@@ -1,7 +1,7 @@
 import type { Dashboard, PaymentMethod, Transaction, TransactionType } from "./types";
 
 // Apps Script 웹앱 배포 후 /exec URL을 여기에 붙여넣으세요.
-export const API_URL: string = "";
+export const API_URL: string = "https://script.google.com/macros/s/AKfycbwFp7piFkt36NMRF9PNAyM-8j5MSfJs5o0mya1oH9-Q_cUV-QZvaj7-KQ0-PQvCUfK6iQ/exec";
 
 type ApiResult<T> = {
   ok: boolean;
