@@ -44,6 +44,7 @@ function doPost(e) {
     if (action === 'deleteLabor') return json(deleteLabor_(body.id));
 
     if (action === 'addReceivable') return json(addReceivable_(body.data));
+    if (action === 'updateReceivable') return json(updateReceivable_(body.id, body.data));
     if (action === 'payReceivable') return json(payReceivable_(body.id, body.paid));
     if (action === 'completeReceivable') return json(completeReceivable_(body.id));
     if (action === 'deleteReceivable') return json(deleteReceivable_(body.id));
@@ -471,15 +472,33 @@ function readReceivables_() {
 
 function getReceivableSummary_() {
   const rows = readReceivables_();
-  let totalBalance = 0, count = 0, paidTotal = 0;
+  let totalAmount = 0;
+  let totalPaid = 0;
+  let totalBalance = 0;
+  let openCount = 0;
+  let closedCount = 0;
+
   rows.forEach(row => {
-    paidTotal += parseAmount_(row.paid);
+    totalAmount += parseAmount_(row.amount);
+    totalPaid += parseAmount_(row.paid);
+
     if (row.status !== '완납' && parseAmount_(row.balance) > 0) {
       totalBalance += parseAmount_(row.balance);
-      count++;
+      openCount++;
+    } else {
+      closedCount++;
     }
   });
-  return { totalBalance, count, paidTotal };
+
+  return {
+    totalAmount,
+    totalPaid,
+    totalBalance,
+    openCount,
+    closedCount,
+    count: openCount,
+    paidTotal: totalPaid
+  };
 }
 
 function getReceivables_() {
@@ -520,6 +539,27 @@ function addReceivable_(data) {
   ]);
 
   return { ok: true, id };
+}
+
+
+function updateReceivable_(id, data) {
+  return updateReceivableRow_(id, row => {
+    const amount = parseAmount_(data.amount);
+    const paid = parseAmount_(data.paid);
+    const balance = Math.max(0, amount - paid);
+
+    return {
+      ...row,
+      date: String(data.date || row.date || todayKst_()).slice(0, 10),
+      name: data.name || '',
+      phone: data.phone || '',
+      amount,
+      paid,
+      balance,
+      status: calcStatus_(balance, amount),
+      memo: data.memo || '',
+    };
+  });
 }
 
 function updateReceivableRow_(id, updater) {

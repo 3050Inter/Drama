@@ -37,3 +37,10 @@ UI 리뉴얼 + 미수금 관리 포함 전체 프로젝트입니다.
 - 직원/지출항목 60초 캐시
 - 미수금 10초 캐시
 - 저장/수정/삭제 시 관련 캐시 자동 삭제
+
+
+## V6.8.1 미수금 수정 오류 Fix
+- `updateReceivable` API export 추가
+- `components/ReceivablePage.tsx` import 오류 수정
+- Apps Script `updateReceivable_` 추가
+- 미수금 summary 필드명 호환 처리
