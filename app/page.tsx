@@ -1,135 +1,104 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import BottomNavigation from "@/components/BottomNavigation";
+import Dashboard from "@/components/Dashboard";
+import DateNavigator from "@/components/DateNavigator";
+import InputSheet from "@/components/InputSheet";
+import TransactionList from "@/components/TransactionList";
+import { addTransaction, deleteTransaction, getDashboard, getTransactions } from "@/lib/api";
+import { todayString } from "@/lib/formatter";
+import type { Dashboard as DashboardType, Transaction } from "@/lib/types";
 
-type Summary = {
-  profit: number;
-  sales: number;
-  card: number;
-  cash: number;
-  bank: number;
-  expense: number;
+const EMPTY_DASHBOARD: DashboardType = {
+  date: todayString(),
+  totalSales: 0,
+  totalExpense: 0,
+  profit: 0,
+  cardSales: 0,
+  cashSales: 0,
+  bankSales: 0,
+  transactionCount: 0,
 };
 
 export default function Page() {
-  const [date, setDate] = useState("2026-07-08");
+  const [date, setDate] = useState(todayString());
+  const [dashboard, setDashboard] = useState<DashboardType>(EMPTY_DASHBOARD);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [open, setOpen] = useState(false);
+  const [apiReady, setApiReady] = useState(true);
 
-  const [data, setData] = useState<Summary>({
-    profit: 10000,
-    sales: 10000,
-    card: 10000,
-    cash: 0,
-    bank: 0,
-    expense: 0,
-  });
+  const reload = async () => {
+    try {
+      const [dashboardRes, transactionsRes] = await Promise.all([
+        getDashboard(date),
+        getTransactions(date),
+      ]);
 
-  const moveDate = (days: number) => {
-    const d = new Date(date);
-    d.setDate(d.getDate() + days);
-    setDate(d.toISOString().slice(0, 10));
+      if (dashboardRes.ok) {
+        setDashboard(dashboardRes.dashboard);
+      }
+
+      if (transactionsRes.ok) {
+        setTransactions(transactionsRes.rows || []);
+      }
+
+      setApiReady(true);
+    } catch (err) {
+      setApiReady(false);
+      setDashboard({
+        ...EMPTY_DASHBOARD,
+        date,
+      });
+      setTransactions([]);
+    }
   };
 
   useEffect(() => {
-    // 다음 단계에서 Google Sheets API 연결
+    reload();
   }, [date]);
 
+  const saveTransaction = async (data: Parameters<typeof addTransaction>[0]) => {
+    await addTransaction(data);
+    await reload();
+  };
+
+  const removeTransaction = async (id: string) => {
+    if (!confirm("삭제할까요?")) return;
+    await deleteTransaction(id);
+    await reload();
+  };
+
   return (
-    <div className="min-h-screen bg-[#0B1220] text-white flex flex-col items-center">
-      <div className="w-full max-w-md px-4 pt-6 pb-28">
-        <h1 className="text-center text-2xl font-bold">🎬 드라마 LIVE</h1>
+    <div className="min-h-screen bg-[#0B1220] text-white">
+      <main className="mx-auto w-full max-w-md px-4 pb-32 pt-6">
+        <h1 className="text-center text-2xl font-black">🎬 드라마 LIVE</h1>
 
-        <div className="flex justify-between items-center mt-4 bg-[#111A2E] p-3 rounded-xl">
-          <button onClick={() => moveDate(-1)} className="px-3 text-xl">
-            ‹
-          </button>
+        <DateNavigator date={date} onChange={setDate} />
 
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="bg-transparent text-white text-center"
-          />
+        {!apiReady && (
+          <div className="mt-3 rounded-xl bg-yellow-500/15 p-3 text-sm text-yellow-200">
+            API URL이 아직 연결되지 않았습니다. `lib/api.ts`의 API_URL을 입력하면 실제 데이터가 표시됩니다.
+          </div>
+        )}
 
-          <button onClick={() => moveDate(1)} className="px-3 text-xl">
-            ›
-          </button>
+        <Dashboard data={dashboard} />
+
+        <div className="mt-5 flex items-center gap-2 text-lg font-black">
+          🧾 거래내역
         </div>
 
-        <div className="mt-4 bg-green-500 p-5 rounded-xl shadow-lg">
-          <div className="text-sm">오늘 순이익</div>
-          <div className="text-2xl font-bold">
-            ₩ {data.profit.toLocaleString()}
-          </div>
-        </div>
+        <TransactionList items={transactions} onDelete={removeTransaction} />
+      </main>
 
-        <div className="mt-3 bg-[#111A2E] p-4 rounded-xl">
-          총매출 ₩ {data.sales.toLocaleString()}
-        </div>
+      <BottomNavigation onAdd={() => setOpen(true)} />
 
-        <div className="grid grid-cols-2 gap-3 mt-3">
-          <div className="bg-[#111A2E] p-3 rounded-xl">
-            카드 ₩ {data.card.toLocaleString()}
-          </div>
-          <div className="bg-[#111A2E] p-3 rounded-xl">
-            현금 ₩ {data.cash.toLocaleString()}
-          </div>
-          <div className="bg-[#111A2E] p-3 rounded-xl">
-            계좌 ₩ {data.bank.toLocaleString()}
-          </div>
-          <div className="bg-[#111A2E] p-3 rounded-xl">
-            지출 ₩ {data.expense.toLocaleString()}
-          </div>
-        </div>
-      </div>
-
-      <button
-        onClick={() => setOpen(true)}
-        className="fixed bottom-6 left-1/2 -translate-x-1/2 w-16 h-16 rounded-full bg-white text-black text-3xl shadow-lg flex items-center justify-center z-40"
-      >
-        +
-      </button>
-
-      {open && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-end sm:items-center justify-center">
-          <div className="w-full max-w-md bg-[#111A2E] rounded-t-2xl sm:rounded-2xl p-5">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold">내역 입력</h2>
-              <button onClick={() => setOpen(false)} className="text-2xl">
-                ×
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              <input
-                type="number"
-                placeholder="금액"
-                className="w-full p-3 rounded-xl bg-[#0B1220] text-white outline-none"
-              />
-
-              <select className="w-full p-3 rounded-xl bg-[#0B1220] text-white outline-none">
-                <option>카드</option>
-                <option>현금</option>
-                <option>계좌</option>
-                <option>지출</option>
-              </select>
-
-              <input
-                type="text"
-                placeholder="메모"
-                className="w-full p-3 rounded-xl bg-[#0B1220] text-white outline-none"
-              />
-
-              <button
-                onClick={() => setOpen(false)}
-                className="w-full p-3 rounded-xl bg-green-500 font-bold"
-              >
-                저장
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <InputSheet
+        open={open}
+        date={date}
+        onClose={() => setOpen(false)}
+        onSave={saveTransaction}
+      />
     </div>
   );
 }
