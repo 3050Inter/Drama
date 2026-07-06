@@ -7,3 +7,4 @@ button{border:0}
 input[type="date"]::-webkit-calendar-picker-indicator,
 input[type="month"]::-webkit-calendar-picker-indicator{filter:invert(1);opacity:.75}
 select option{color:#111827}
+*{-webkit-tap-highlight-color:transparent}
