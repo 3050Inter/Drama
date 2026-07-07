@@ -122,6 +122,7 @@ export const deleteLabor = async (id: string) => { const res = await postJson<Ap
 
 export const getReceivables = (options?: { force?: boolean }) => getJson<ApiResult<{ rows: Receivable[]; summary: ReceivableSummary }>>("receivables", undefined, options);
 export const addReceivable = async (data: { date: string; name: string; phone: string; amount: number; paid?: number; memo: string }) => { const res = await postJson<ApiResult<{ id?: string }>>({ action: "addReceivable", data }); invalidateReceivables(); return res; };
+export const updateReceivable = async (id: string, data: { date: string; name: string; phone: string; amount: number; paid: number; memo: string }) => { const res = await postJson<ApiResult<Record<string, never>>>({ action: "updateReceivable", id, data }); invalidateReceivables(); return res; };
 export const payReceivable = async (id: string, paid: number, method: PaymentMethod, memo?: string) => { const res = await postJson<ApiResult<Record<string, never>>>({ action: "payReceivable", id, paid, method, memo: memo || "" }); invalidateReceivables(); return res; };
 export const completeReceivable = async (id: string, method: PaymentMethod, memo?: string) => { const res = await postJson<ApiResult<Record<string, never>>>({ action: "completeReceivable", id, method, memo: memo || "" }); invalidateReceivables(); return res; };
 export const deleteReceivable = async (id: string) => { const res = await postJson<ApiResult<Record<string, never>>>({ action: "deleteReceivable", id }); invalidateReceivables(); return res; };

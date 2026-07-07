@@ -2,11 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Banknote, BarChart3, CalendarDays, ChevronLeft, ChevronRight, CreditCard, Filter, Home, Landmark, Pencil, Plus, Search, Settings, Trash2, UserRoundCheck, UsersRound, Wallet, X } from "lucide-react";
-import { addEmployee, addLabor, addPersonalExpense, addReceivable, addTransaction, completeReceivable, deactivateEmployee, deleteLabor, deletePersonalExpense, deleteReceivable, deleteTransaction, getEmployees, getExpenseCategories, getHome, getInit, getLabor, getPersonalExpenses, getReceivables, getStats, payReceivable, preloadDay, updateTransaction } from "@/lib/api";
+import { addEmployee, addLabor, addPersonalExpense, addReceivable, addTransaction, completeReceivable, deactivateEmployee, deleteLabor, deletePersonalExpense, deleteReceivable, deleteTransaction, getEmployees, getExpenseCategories, getHome, getInit, getLabor, getPersonalExpenses, getReceivables, getStats, payReceivable, preloadDay, updateReceivable, updateTransaction } from "@/lib/api";
 import { addDays, money, todayString } from "@/lib/formatter";
 import type { Dashboard, Employee, ExpenseCategory, LaborEntry, LaborSummaryByEmployee, PageKey, PaymentMethod, PersonalExpense, PersonalExpenseSummary, Receivable, ReceivableSummary, StatsSummary, Transaction, TransactionType } from "@/lib/types";
 
-const APP_VERSION = "V4.0.3-RECEIVABLE-DATE-FIX";
+const APP_VERSION = "V4.0.4-RECEIVABLE-EDIT-UI";
 const EMPTY_DASHBOARD: Dashboard = { date: todayString(), totalSales: 0, totalExpense: 0, profit: 0, cardSales: 0, cashSales: 0, bankSales: 0, cumulativeCash: 0, laborExpense: 0, receivableBalance: 0, receivableCount: 0, transactionCount: 0 };
 const EMPTY_RCV: ReceivableSummary = { totalBalance: 0, count: 0, paidTotal: 0 };
 const OWNERS = ["연주", "관수"] as const;
@@ -95,7 +95,148 @@ function StatsPage() { const [startDate, setStartDate] = useState(todayString().
 
 function LaborPage({ date, onChanged }: { date: string; onChanged: () => Promise<void> }) { const [employees, setEmployees] = useState<Employee[]>([]); const [rows, setRows] = useState<LaborEntry[]>([]); const [summary, setSummary] = useState<{ totalTc: number; totalAmount: number; byEmployee: LaborSummaryByEmployee[] }>({ totalTc: 0, totalAmount: 0, byEmployee: [] }); const [employee, setEmployee] = useState(""); const [tableNo, setTableNo] = useState("없음"); const [tc, setTc] = useState(""); const [dailyPay, setDailyPay] = useState(""); const [memo, setMemo] = useState(""); const load = async () => { const [empRes, laborRes] = await Promise.all([getEmployees(), getLabor(date)]); if (empRes.ok) { setEmployees(empRes.rows || []); setEmployee((e) => e || empRes.rows?.[0]?.name || ""); } if (laborRes.ok) { setRows(laborRes.rows || []); setSummary(laborRes.summary); } }; useEffect(() => { load().catch(() => {}); }, [date]); const save = async () => { if (!employee) return alert("직원을 선택해주세요."); await addLabor({ date, employee, tableNo: tableNo === "없음" ? "" : tableNo.replace("T", ""), tc: parseNum(tc), dailyPay: parseNum(dailyPay), memo }); setTc(""); setDailyPay(""); setMemo(""); await load(); await onChanged(); }; const remove = async (id: string) => { if (!confirm("인건비 내역을 삭제할까요?")) return; await deleteLabor(id); await load(); await onChanged(); }; return <div className="space-y-4"><div className="rounded-3xl bg-pink-500 p-5"><div className="text-sm font-bold opacity-90">지급금액</div><div className="mt-1 text-3xl font-black">₩ {money(summary.totalAmount || 0)}</div><div className="mt-1 text-sm">TC + 일비 합산</div></div><div className="grid grid-cols-2 gap-3">{summary.byEmployee.map((r) => <div key={r.employee} className="rounded-3xl bg-[#111A2E] p-4"><div className="text-sm text-slate-300">{r.employee} 지급금액</div><div className="mt-1 font-black text-pink-400">₩ {money(r.amount || 0)}</div></div>)}</div><div className="rounded-3xl bg-[#111A2E] p-4"><div className="mb-3 text-lg font-black">인건비 입력</div><select value={employee} onChange={(e) => setEmployee(e.target.value)} className="h-12 w-full rounded-2xl bg-slate-800 px-4 text-white outline-none">{employees.map((e) => <option key={e.id} value={e.name}>{e.name}</option>)}</select><select value={tableNo} onChange={(e) => setTableNo(e.target.value)} className="mt-3 h-12 w-full rounded-2xl bg-slate-800 px-4 text-white outline-none">{LABOR_TABLES.map((t) => <option key={t} value={t}>{t}</option>)}</select><input inputMode="numeric" value={tc} onChange={(e) => setTc(e.target.value.replace(/[^0-9]/g, ""))} placeholder="TC" className="mt-3 h-12 w-full rounded-2xl bg-slate-800 px-4 text-white outline-none" /><input inputMode="numeric" value={dailyPay} onChange={(e) => setDailyPay(e.target.value.replace(/[^0-9]/g, ""))} placeholder="일비" className="mt-3 h-12 w-full rounded-2xl bg-slate-800 px-4 text-white outline-none" /><input value={memo} onChange={(e) => setMemo(e.target.value)} placeholder="메모" className="mt-3 h-12 w-full rounded-2xl bg-slate-800 px-4 text-white outline-none" /><button onClick={save} className="mt-4 h-14 w-full rounded-2xl bg-pink-500 text-lg font-black">저장</button></div><div className="space-y-3">{rows.map((item) => <div key={item.id} className="rounded-3xl border-l-4 border-pink-500/50 bg-[#111A2E] p-4"><div className="flex justify-between gap-3"><div><div className="font-black">{item.employee}</div><div className="mt-1 text-sm text-slate-400">{item.tableNo ? `${item.tableNo}T` : "테이블 없음"} · TC ₩ {money(item.tc || 0)} · 일비 ₩ {money(item.dailyPay || 0)}</div>{item.memo && <div className="mt-1 text-sm text-slate-300">📝 {item.memo}</div>}</div><div className="text-right"><div className="text-sm text-slate-400">지급금액</div><div className="font-black text-pink-400">₩ {money(item.amount || ((item.tc || 0) + (item.dailyPay || 0)))}</div><button onClick={() => remove(item.id)} className="mt-2 text-xs text-red-400">삭제</button></div></div></div>)}</div></div>; }
 
-function ReceivablePage({ onChanged, focusDate }: { onChanged: () => Promise<void>; focusDate?: string }) { const [rows, setRows] = useState<Receivable[]>([]); const [summary, setSummary] = useState<ReceivableSummary>(EMPTY_RCV); const [name, setName] = useState(""); const [phone, setPhone] = useState(""); const [amount, setAmount] = useState(""); const [paid, setPaid] = useState(""); const [memo, setMemo] = useState(""); const [date, setDate] = useState(focusDate || todayString()); const [payAmount, setPayAmount] = useState<Record<string, string>>({}); const [payMethod, setPayMethod] = useState<Record<string, PaymentMethod>>({}); const load = async () => { const res = await getReceivables(); if (res.ok) { setRows(res.rows || []); setSummary(res.summary); } }; useEffect(() => { load().catch(() => {}); }, []); useEffect(() => { if (focusDate) setDate(focusDate); }, [focusDate]); const save = async () => { const value = parseNum(amount); const paidValue = parseNum(paid); if (!name.trim()) return alert("손님명을 입력해주세요."); if (!value) return alert("발생금액을 입력해주세요."); await addReceivable({ date: date || todayString(), name: name.trim(), phone, amount: value, paid: paidValue || 0, memo }); setName(""); setPhone(""); setAmount(""); setPaid(""); setMemo(""); setDate(focusDate || todayString()); await load(); await onChanged(); }; const pay = async (id: string) => { const value = parseNum(payAmount[id] || ""); if (!value) return alert("입금액을 입력해주세요."); await payReceivable(id, value, payMethod[id] || "현금"); setPayAmount((p) => ({ ...p, [id]: "" })); await load(); await onChanged(); }; const complete = async (id: string) => { if (!confirm("완납 처리할까요?")) return; await completeReceivable(id, payMethod[id] || "현금"); await load(); await onChanged(); }; const remove = async (id: string) => { if (!confirm("삭제할까요?")) return; await deleteReceivable(id); await load(); await onChanged(); }; const shown = focusDate ? rows.filter((r) => r.date === focusDate) : rows; return <div className="space-y-4"><div className="rounded-3xl bg-yellow-500 p-5"><div className="text-sm font-bold opacity-90">현재 미수금</div><div className="mt-1 text-3xl font-black">₩ {money(summary.totalBalance)}</div><div className="mt-1 text-sm">{summary.count}건 / 회수 ₩ {money(summary.paidTotal)}</div></div><div className="rounded-3xl bg-[#111A2E] p-4"><div className="mb-3 text-lg font-black">미수금 등록</div><input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-12 w-full rounded-2xl bg-slate-800 px-4 text-white outline-none" /><input value={name} onChange={(e) => setName(e.target.value)} placeholder="손님명" className="h-12 w-full rounded-2xl bg-slate-800 px-4 text-white outline-none" /><input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="전화번호(선택)" className="mt-3 h-12 w-full rounded-2xl bg-slate-800 px-4 text-white outline-none" /><input inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^0-9]/g, ""))} placeholder="발생금액" className="mt-3 h-12 w-full rounded-2xl bg-slate-800 px-4 text-white outline-none" /><input inputMode="numeric" value={paid} onChange={(e) => setPaid(e.target.value.replace(/[^0-9]/g, ""))} placeholder="입금금액(있으면)" className="mt-3 h-12 w-full rounded-2xl bg-slate-800 px-4 text-white outline-none" /><input value={memo} onChange={(e) => setMemo(e.target.value)} placeholder="메모" className="mt-3 h-12 w-full rounded-2xl bg-slate-800 px-4 text-white outline-none" /><button onClick={save} className="mt-4 h-14 w-full rounded-2xl bg-yellow-500 text-lg font-black">미수금 저장</button></div><div className="space-y-3">{shown.map((item) => <div key={item.id} className="rounded-3xl border-l-4 border-yellow-500/50 bg-[#111A2E] p-4"><div className="flex justify-between gap-4"><div><div className="font-black">{item.name}</div>{item.phone && <div className="mt-1 text-sm text-slate-400">{item.phone}</div>}{item.memo && <div className="mt-1 text-sm text-slate-300">📝 {item.memo}</div>}<div className="mt-1 text-xs text-slate-500">{item.date}</div></div><div className="text-right"><div className="text-sm text-slate-400">잔액</div><div className={`font-black ${item.status === "완납" ? "text-green-400" : "text-yellow-300"}`}>₩ {money(item.balance)}</div><div className="mt-1 text-xs text-slate-400">{item.status}</div></div></div>{!!item.payments?.length && <div className="mt-3 rounded-2xl bg-slate-900/60 p-3 text-xs"><div className="mb-2 font-bold text-slate-300">입금내역</div><div className="space-y-1.5">{item.payments.map((p) => <div key={p.id} className="flex justify-between gap-2 text-slate-300"><div><span className="text-slate-500">{p.date}</span><span className="ml-2 rounded-full bg-yellow-500/15 px-2 py-0.5 text-yellow-300">{p.status}</span><span className="ml-2 text-blue-300">{p.method}</span>{p.memo && <span className="ml-2 text-slate-400">{p.memo}</span>}</div><div className="text-right"><div className="font-black text-green-300">₩ {money(p.amount)}</div><div className="text-[11px] text-slate-500">잔액 ₩ {money(p.balance)}</div></div></div>)}</div></div>}{item.status !== "완납" && <div className="mt-3 flex gap-2"><input inputMode="numeric" value={payAmount[item.id] || ""} onChange={(e) => setPayAmount((p) => ({ ...p, [item.id]: e.target.value.replace(/[^0-9]/g, "") }))} placeholder="입금액" className="h-11 flex-1 rounded-2xl bg-slate-800 px-3 text-white outline-none" /><select value={payMethod[item.id] || "현금"} onChange={(e) => setPayMethod((p) => ({ ...p, [item.id]: e.target.value as PaymentMethod }))} className="h-11 rounded-2xl bg-slate-800 px-2 text-xs text-white outline-none"><option value="현금">현금</option><option value="카드">카드</option><option value="계좌">계좌</option></select><button onClick={() => pay(item.id)} className="h-11 rounded-2xl bg-blue-500 px-3 text-sm font-black">입금</button><button onClick={() => complete(item.id)} className="h-11 rounded-2xl bg-green-500 px-3 text-sm font-black">완납</button></div>}<button onClick={() => remove(item.id)} className="mt-3 text-xs text-red-400">삭제</button></div>)}</div></div>; }
+function ReceivablePage({ onChanged, focusDate }: { onChanged: () => Promise<void>; focusDate?: string }) {
+  const [rows, setRows] = useState<Receivable[]>([]);
+  const [summary, setSummary] = useState<ReceivableSummary>(EMPTY_RCV);
+  const [editing, setEditing] = useState<Receivable | null>(null);
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [amount, setAmount] = useState("");
+  const [paid, setPaid] = useState("");
+  const [memo, setMemo] = useState("");
+  const [date, setDate] = useState(todayString());
+  const [payAmount, setPayAmount] = useState<Record<string, string>>({});
+  const [payMethod, setPayMethod] = useState<Record<string, PaymentMethod>>({});
+
+  const load = async () => {
+    const res = await getReceivables();
+    if (res.ok) {
+      setRows(res.rows || []);
+      setSummary(res.summary);
+    }
+  };
+
+  useEffect(() => { load().catch(() => {}); }, []);
+
+  const resetForm = () => {
+    setEditing(null);
+    setName("");
+    setPhone("");
+    setAmount("");
+    setPaid("");
+    setMemo("");
+    setDate(todayString());
+  };
+
+  const save = async () => {
+    const value = parseNum(amount);
+    const paidValue = editing ? editing.paid : parseNum(paid);
+    if (!name.trim()) return alert("손님명을 입력해주세요.");
+    if (!value) return alert("발생금액을 입력해주세요.");
+    const payload = { date: date || todayString(), name: name.trim(), phone, amount: value, paid: paidValue || 0, memo };
+    if (editing) await updateReceivable(editing.id, payload);
+    else await addReceivable(payload);
+    resetForm();
+    await load();
+    await onChanged();
+  };
+
+  const edit = (item: Receivable) => {
+    setEditing(item);
+    setDate(item.date || todayString());
+    setName(item.name || "");
+    setPhone(item.phone || "");
+    setAmount(String(item.amount || ""));
+    setPaid(String(item.paid || ""));
+    setMemo(item.memo || "");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const pay = async (id: string) => {
+    const value = parseNum(payAmount[id] || "");
+    if (!value) return alert("입금액을 입력해주세요.");
+    await payReceivable(id, value, payMethod[id] || "현금");
+    setPayAmount((p) => ({ ...p, [id]: "" }));
+    await load();
+    await onChanged();
+  };
+
+  const complete = async (id: string) => {
+    if (!confirm("완납 처리할까요?")) return;
+    await completeReceivable(id, payMethod[id] || "현금");
+    await load();
+    await onChanged();
+  };
+
+  const remove = async (id: string) => {
+    if (!confirm("삭제할까요?")) return;
+    await deleteReceivable(id);
+    await load();
+    await onChanged();
+  };
+
+  const shown = focusDate ? rows.filter((r) => r.date === focusDate) : rows;
+
+  return <div className="space-y-4">
+    <div className="rounded-3xl bg-yellow-500 p-5">
+      <div className="text-sm font-bold opacity-90">현재 미수금</div>
+      <div className="mt-1 text-3xl font-black">₩ {money(summary.totalBalance)}</div>
+      <div className="mt-1 text-sm">{summary.count}건 / 회수 ₩ {money(summary.paidTotal)}</div>
+    </div>
+
+    <div className="rounded-3xl bg-[#111A2E] p-4">
+      <div className="mb-3 text-lg font-black">{editing ? "미수금 수정" : "미수금 등록"}</div>
+      <div className="space-y-3">
+        <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-12 w-full rounded-2xl bg-slate-800 px-4 text-white outline-none" />
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="손님명" className="h-12 w-full rounded-2xl bg-slate-800 px-4 text-white outline-none" />
+        <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="전화번호(선택)" className="h-12 w-full rounded-2xl bg-slate-800 px-4 text-white outline-none" />
+        <input inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^0-9]/g, ""))} placeholder="발생금액" className="h-12 w-full rounded-2xl bg-slate-800 px-4 text-white outline-none" />
+        {!editing && <input inputMode="numeric" value={paid} onChange={(e) => setPaid(e.target.value.replace(/[^0-9]/g, ""))} placeholder="입금금액(있으면)" className="h-12 w-full rounded-2xl bg-slate-800 px-4 text-white outline-none" />}
+        <input value={memo} onChange={(e) => setMemo(e.target.value)} placeholder="메모" className="h-12 w-full rounded-2xl bg-slate-800 px-4 text-white outline-none" />
+      </div>
+      <div className="mt-4 flex gap-2">
+        <button onClick={save} className="h-14 flex-1 rounded-2xl bg-yellow-500 text-lg font-black">{editing ? "수정 저장" : "미수금 저장"}</button>
+        {editing && <button onClick={resetForm} className="h-14 rounded-2xl bg-slate-700 px-4 font-black">취소</button>}
+      </div>
+    </div>
+
+    <div className="space-y-3">{shown.map((item) => <div key={item.id} className="rounded-3xl border-l-4 border-yellow-500/50 bg-[#111A2E] p-4">
+      <div className="flex justify-between gap-4">
+        <div className="min-w-0">
+          <div className="font-black">{item.name}</div>
+          {item.phone && <div className="mt-1 text-sm text-slate-400">{item.phone}</div>}
+          {item.memo && <div className="mt-1 text-sm text-slate-300">📝 {item.memo}</div>}
+          <div className="mt-1 text-xs text-slate-500">{item.date}</div>
+        </div>
+        <div className="shrink-0 text-right">
+          <div className="text-sm text-slate-400">잔액</div>
+          <div className={`font-black ${item.status === "완납" ? "text-green-400" : "text-yellow-300"}`}>₩ {money(item.balance)}</div>
+          <div className="mt-1 text-xs text-slate-400">{item.status}</div>
+        </div>
+      </div>
+
+      {!!item.payments?.length && <div className="mt-3 rounded-2xl bg-slate-900/60 p-3 text-xs">
+        <div className="mb-2 font-bold text-slate-300">입금내역</div>
+        <div className="space-y-1.5">{item.payments.map((p) => <div key={p.id} className="flex justify-between gap-2 text-slate-300">
+          <div><span className="text-slate-500">{p.date}</span><span className="ml-2 rounded-full bg-yellow-500/15 px-2 py-0.5 text-yellow-300">{p.status}</span><span className="ml-2 text-blue-300">{p.method}</span>{p.memo && <span className="ml-2 text-slate-400">{p.memo}</span>}</div>
+          <div className="text-right"><div className="font-black text-green-300">₩ {money(p.amount)}</div><div className="text-[11px] text-slate-500">잔액 ₩ {money(p.balance)}</div></div>
+        </div>)}</div>
+      </div>}
+
+      {item.status !== "완납" && <div className="mt-3 flex flex-wrap items-center gap-2">
+        <input inputMode="numeric" value={payAmount[item.id] || ""} onChange={(e) => setPayAmount((p) => ({ ...p, [item.id]: e.target.value.replace(/[^0-9]/g, "") }))} placeholder="입금액" className="h-11 min-w-[120px] flex-1 rounded-2xl bg-slate-800 px-3 text-white outline-none" />
+        <select value={payMethod[item.id] || "현금"} onChange={(e) => setPayMethod((p) => ({ ...p, [item.id]: e.target.value as PaymentMethod }))} className="h-11 w-[72px] rounded-2xl bg-slate-800 px-2 text-xs text-white outline-none"><option value="현금">현금</option><option value="카드">카드</option><option value="계좌">계좌</option></select>
+        <button onClick={() => pay(item.id)} className="h-11 min-w-[52px] rounded-2xl bg-blue-500 px-3 text-sm font-black">입금</button>
+        <button onClick={() => complete(item.id)} className="h-11 min-w-[52px] rounded-2xl bg-green-500 px-3 text-sm font-black">완납</button>
+      </div>}
+
+      <div className="mt-3 flex gap-4 text-xs">
+        <button onClick={() => edit(item)} className="text-blue-400">수정</button>
+        <button onClick={() => remove(item.id)} className="text-red-400">삭제</button>
+      </div>
+    </div>)}</div>
+  </div>;
+}
 function ReceivableCalendar({ onSelect }: { onSelect: (date: string) => void }) { const [rows, setRows] = useState<Receivable[]>([]); useEffect(() => { getReceivables().then((r) => setRows((r.rows || []).filter((x) => x.status !== "완납" && x.balance > 0))).catch(() => {}); }, []); const dates = Array.from(new Set(rows.map((r) => r.date))).sort().reverse(); return <div className="mt-4 rounded-3xl bg-[#111A2E] p-4"><div className="mb-3 text-lg font-black">미수금 날짜</div>{!dates.length && <div className="text-sm text-slate-400">미수금이 있는 날짜가 없습니다.</div>}<div className="grid grid-cols-2 gap-2">{dates.map((d) => <button key={d} onClick={() => onSelect(d)} className="rounded-2xl bg-yellow-500/20 p-3 text-left font-bold text-yellow-200">{d}<br /><span className="text-xs">미수금 보기</span></button>)}</div></div>; }
 function SettingsPage({ onChanged }: { onChanged: () => Promise<void> }) { const [employees, setEmployees] = useState<Employee[]>([]); const [name, setName] = useState(""); const load = async () => { const res = await getEmployees(); if (res.ok) setEmployees(res.rows || []); }; useEffect(() => { load().catch(() => {}); }, []); const add = async () => { const clean = name.trim(); if (!clean) return; await addEmployee(clean); setName(""); await load(); await onChanged(); }; const remove = async (id: string) => { if (!confirm("직원을 비활성화할까요? 과거 기록은 유지됩니다.")) return; await deactivateEmployee(id); await load(); await onChanged(); }; return <div className="space-y-4"><div className="rounded-3xl bg-[#111A2E] p-4"><div className="text-lg font-black">직원 관리</div><div className="mt-3 flex gap-2"><input value={name} onChange={(e) => setName(e.target.value)} placeholder="직원명" className="h-12 flex-1 rounded-2xl bg-slate-800 px-4 text-white outline-none" /><button onClick={add} className="h-12 rounded-2xl bg-green-500 px-4 font-black">추가</button></div></div><div className="space-y-2">{employees.map((emp) => <div key={emp.id} className="flex items-center justify-between rounded-3xl bg-[#111A2E] p-4"><div><div className="font-black">{emp.name}</div><div className="text-xs text-slate-500">ID {emp.id}</div></div><button onClick={() => remove(emp.id)} className="text-sm text-red-400">비활성화</button></div>)}</div><div className="rounded-3xl bg-[#111A2E] p-4 text-sm text-slate-400">앱 버전: {APP_VERSION}</div></div>; }
 
