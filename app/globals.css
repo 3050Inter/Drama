@@ -1,0 +1,27 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body {
+  margin: 0;
+  background: #0B1220;
+  color: white;
+}
+
+input, button, select, textarea {
+  font: inherit;
+}
+
+button {
+  border: 0;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="month"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  opacity: .75;
+}
+
+select option {
+  color: #111827;
+}
