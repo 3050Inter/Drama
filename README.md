@@ -54,7 +54,7 @@ UI 리뉴얼 + 미수금 관리 포함 전체 프로젝트입니다.
 
 ## V4.0 FINAL
 - V3.5.0-BACKEND-SPEED 기준 안정화 버전
-- 앱 버전 표기 V4.0.1-BUILD-FIX 반영
+- 앱 버전 표기 V4.0.3-RECEIVABLE-DATE-FIX 반영
 - 첫 로딩을 init 통합 호출 기준으로 정리
 - 기존 기능 추가 없이 최종 운영용 패키지로 정리
 - GitHub/Vercel + Apps Script Code.gs 동시 적용 필요
