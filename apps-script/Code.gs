@@ -12,7 +12,7 @@ const SHEETS = {
 
 const EXPENSE_CATEGORIES = ['인건비', '마스터', '안주', '안주재료', '비품', '주류,음료', '공과금', '월세', '카드결제현금지급', '기타지출'];
 
-// V3.3 speed engine: reuse Spreadsheet/Sheet objects during one Apps Script execution.
+// V4.2.2 speed engine: reuse Spreadsheet/Sheet objects during one Apps Script execution.
 let __ss = null;
 const __sheetCache = {};
 
@@ -20,7 +20,7 @@ function doGet(e) {
   try {
     const p = e.parameter || {};
     const action = p.action || 'ping';
-    if (action === 'ping') return json({ ok: true, message: 'DRAMA API OK', version: 'V4.1.3-LABOR-DELETE-NO-ALERT' });
+    if (action === 'ping') return json({ ok: true, message: 'DRAMA API OK', version: 'V4.2.2-STABLE' });
     if (action === 'init') return json(getInit_(p.date, p.startDate, p.endDate));
     if (action === 'home') return json(getHome_(p.date));
     if (action === 'dashboard') return json(getDashboard_(p.date));

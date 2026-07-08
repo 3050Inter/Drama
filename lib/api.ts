@@ -21,6 +21,7 @@ export const API_URL: string = "https://script.google.com/macros/s/AKfycbwFp7piF
 type ApiResult<T> = { ok: boolean; error?: string } & T;
 type CacheEntry<T> = { time: number; value?: T; promise?: Promise<T> };
 const CACHE_TTL = 1000 * 60 * 5;
+const REQUEST_TIMEOUT_MS = 12000;
 const apiCache = new Map<string, CacheEntry<unknown>>();
 
 function hasApiUrl() { return API_URL.startsWith("https://script.google.com/"); }
@@ -41,16 +42,20 @@ async function getJson<T>(action: string, params?: Record<string, string>, optio
   const now = Date.now();
   const cached = apiCache.get(key) as CacheEntry<T> | undefined;
   if (!options?.force && cached) {
-    if (cached.value && now - cached.time < ttl) return cached.value;
+    if ("value" in cached && now - cached.time < ttl) return cached.value as T;
     if (cached.promise) return cached.promise;
   }
   const query = new URLSearchParams({ action, ...(params || {}) });
-  const promise = fetch(`${API_URL}?${query.toString()}`, { method: "GET", cache: "no-store" }).then((res) => {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const promise = fetch(`${API_URL}?${query.toString()}`, { method: "GET", cache: "no-store", signal: controller.signal }).then((res) => {
     if (!res.ok) throw new Error("API 요청 실패");
     return res.json() as Promise<T>;
   }).then((value) => {
     apiCache.set(key, { time: Date.now(), value });
     return value;
+  }).finally(() => {
+    clearTimeout(timeout);
   }).catch((err) => {
     apiCache.delete(key);
     throw err;
@@ -60,9 +65,15 @@ async function getJson<T>(action: string, params?: Record<string, string>, optio
 }
 async function postJson<T>(body: unknown) {
   if (!hasApiUrl()) throw new Error("API_URL_EMPTY");
-  const res = await fetch(API_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(body) });
-  if (!res.ok) throw new Error("API 요청 실패");
-  return res.json() as Promise<T>;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    const res = await fetch(API_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(body), signal: controller.signal });
+    if (!res.ok) throw new Error("API 요청 실패");
+    return res.json() as Promise<T>;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 export const clearApiCache = invalidateCache;

@@ -123,7 +123,7 @@ export default function ReceivablePage({
       updateReceivable(editingId, { date, name, phone, amount: value, paid: editingPaid, memo })
         .then((res: any) => {
           if (!res?.ok) throw new Error(res?.error || "미수금 수정 실패");
-          alert("수정되었습니다.");
+          
           void onChanged().catch(() => {});
         })
         .catch((err) => {
@@ -152,7 +152,7 @@ export default function ReceivablePage({
       .then((res: any) => {
         if (!res?.ok) throw new Error(res?.error || "미수금 등록 실패");
         setRows((current) => current.map((item) => (item.id === tempId ? { ...item, id: res.id || item.id } : item)));
-        alert("등록되었습니다.");
+        
         void onChanged().catch(() => {});
       })
       .catch((err) => {
@@ -233,7 +233,7 @@ export default function ReceivablePage({
     request
       .then((res: any) => {
         if (!res?.ok) throw new Error(res?.error || "입금 처리 실패");
-        alert(full ? "완납 처리되었습니다." : "입금 처리되었습니다.");
+        
         void onChanged().catch(() => {});
       })
       .catch((err) => {
@@ -251,7 +251,7 @@ export default function ReceivablePage({
     deleteReceivable(id)
       .then((res: any) => {
         if (!res?.ok) throw new Error(res?.error || "삭제 실패");
-        alert("삭제되었습니다.");
+        
         void onChanged().catch(() => {});
       })
       .catch((err) => {

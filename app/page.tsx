@@ -6,7 +6,7 @@ import { addEmployee, addLabor, addPersonalExpense, addReceivable, addTransactio
 import { addDays, money, todayString } from "@/lib/formatter";
 import type { Dashboard, Employee, ExpenseCategory, LaborEntry, LaborSummaryByEmployee, PageKey, PaymentMethod, PersonalExpense, PersonalExpenseSummary, Receivable, ReceivableSummary, StatsSummary, Transaction, TransactionType } from "@/lib/types";
 
-const APP_VERSION = "V4.1.3-LABOR-DELETE-NO-ALERT";
+const APP_VERSION = "V4.2.2-STABLE";
 const EMPTY_DASHBOARD: Dashboard = { date: todayString(), totalSales: 0, totalExpense: 0, profit: 0, cardSales: 0, cashSales: 0, bankSales: 0, cumulativeCash: 0, laborExpense: 0, receivableBalance: 0, receivableCount: 0, transactionCount: 0 };
 const EMPTY_RCV: ReceivableSummary = { totalBalance: 0, count: 0, paidTotal: 0 };
 const makeLocalId = () => `LOCAL-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -440,8 +440,12 @@ export default function Page() {
     }
   }, [date]);
 
-  useEffect(() => { reload(); preloadDay(date); setFilters(DEFAULT_FILTERS); }, [date, reload]);
-  useEffect(() => { if (page !== "settings") preloadDay(date); }, [page, date]);
+  useEffect(() => { reload(); setFilters(DEFAULT_FILTERS); }, [date, reload]);
+  useEffect(() => {
+    if (page === "settings") return;
+    preloadDay(addDays(date, -1));
+    preloadDay(addDays(date, 1));
+  }, [page, date]);
 
   const saveTransaction = async (data: Parameters<typeof addTransaction>[0]) => {
     const row: Transaction = { ...data, id: makeLocalId() };
