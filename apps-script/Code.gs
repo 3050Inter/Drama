@@ -20,7 +20,7 @@ function doGet(e) {
   try {
     const p = e.parameter || {};
     const action = p.action || 'ping';
-    if (action === 'ping') return json({ ok: true, message: 'DRAMA API OK', version: 'V4.1.2-LABOR-EDIT-FIX' });
+    if (action === 'ping') return json({ ok: true, message: 'DRAMA API OK', version: 'V4.1.3-LABOR-DELETE-NO-ALERT' });
     if (action === 'init') return json(getInit_(p.date, p.startDate, p.endDate));
     if (action === 'home') return json(getHome_(p.date));
     if (action === 'dashboard') return json(getDashboard_(p.date));

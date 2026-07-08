@@ -6,7 +6,7 @@ import { addEmployee, addLabor, addPersonalExpense, addReceivable, addTransactio
 import { addDays, money, todayString } from "@/lib/formatter";
 import type { Dashboard, Employee, ExpenseCategory, LaborEntry, LaborSummaryByEmployee, PageKey, PaymentMethod, PersonalExpense, PersonalExpenseSummary, Receivable, ReceivableSummary, StatsSummary, Transaction, TransactionType } from "@/lib/types";
 
-const APP_VERSION = "V4.1.2-LABOR-EDIT-FIX";
+const APP_VERSION = "V4.1.3-LABOR-DELETE-NO-ALERT";
 const EMPTY_DASHBOARD: Dashboard = { date: todayString(), totalSales: 0, totalExpense: 0, profit: 0, cardSales: 0, cashSales: 0, bankSales: 0, cumulativeCash: 0, laborExpense: 0, receivableBalance: 0, receivableCount: 0, transactionCount: 0 };
 const EMPTY_RCV: ReceivableSummary = { totalBalance: 0, count: 0, paidTotal: 0 };
 const makeLocalId = () => `LOCAL-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -172,10 +172,8 @@ function LaborPage({ date, onChanged }: { date: string; onChanged: () => Promise
       applyRows(next);
       const targetId = editId;
       resetForm();
-      void updateLabor(targetId, { date, employee, tableNo: cleanTable, tc: tcValue, dailyPay: dailyValue, memo }).then(async () => {
-        await load();
-        await onChanged();
-        alert("수정되었습니다.");
+      void updateLabor(targetId, { date, employee, tableNo: cleanTable, tc: tcValue, dailyPay: dailyValue, memo }).then(() => {
+        void onChanged().catch(() => {});
       }).catch(() => {
         applyRows(previous);
         alert("수정에 실패했습니다. 다시 시도해주세요.");
@@ -186,10 +184,9 @@ function LaborPage({ date, onChanged }: { date: string; onChanged: () => Promise
     const row: LaborEntry = { id: makeLocalId(), transactionId: "", date, employee, tableNo: cleanTable, tc: tcValue, dailyPay: dailyValue, amount: tcValue + dailyValue, memo };
     applyRows([row, ...rows]);
     resetForm();
-    void addLabor({ date, employee, tableNo: cleanTable, tc: tcValue, dailyPay: dailyValue, memo }).then(async () => {
-      await load();
-      await onChanged();
-      alert("저장되었습니다.");
+    void addLabor({ date, employee, tableNo: cleanTable, tc: tcValue, dailyPay: dailyValue, memo }).then((res: any) => {
+      if (res?.id) setRows((current) => current.map((r) => r.id === row.id ? { ...r, id: res.id } : r));
+      void onChanged().catch(() => {});
     }).catch(() => {
       applyRows(previous);
       alert("저장에 실패했습니다. 다시 시도해주세요.");
@@ -211,10 +208,8 @@ function LaborPage({ date, onChanged }: { date: string; onChanged: () => Promise
     const previous = rows;
     applyRows(rows.filter((r) => r.id !== id));
     if (editId === id) resetForm();
-    void deleteLabor(id).then(async () => {
-      await load();
-      await onChanged();
-      alert("삭제되었습니다.");
+    void deleteLabor(id).then(() => {
+      void onChanged().catch(() => {});
     }).catch(() => {
       applyRows(previous);
       alert("삭제에 실패했습니다. 다시 시도해주세요.");
@@ -282,7 +277,10 @@ function ReceivablePage({ onChanged, focusDate }: { onChanged: () => Promise<voi
     applyReceivableRows(editing ? rows.map((r) => r.id === editing.id ? nextRow : r) : [nextRow, ...rows], setRows, setSummary);
     resetForm();
     const job = editing ? updateReceivable(editing.id, payload) : addReceivable(payload);
-    void job.then(async () => { await load(); await onChanged(); }).catch(() => { applyReceivableRows(previous, setRows, setSummary); alert("저장에 실패했습니다. 다시 시도해주세요."); });
+    void job.then((res: any) => {
+      if (!editing && res?.id) setRows((current) => current.map((r) => r.id === nextRow.id ? { ...r, id: res.id } : r));
+      void onChanged().catch(() => {});
+    }).catch(() => { applyReceivableRows(previous, setRows, setSummary); alert("저장에 실패했습니다. 다시 시도해주세요."); });
   };
 
   const edit = (item: Receivable) => {
@@ -309,7 +307,7 @@ function ReceivablePage({ onChanged, focusDate }: { onChanged: () => Promise<voi
       applyReceivableRows(rows.map((r) => r.id === id ? normalizeReceivable({ ...r, paid: nextPaid, payments: [...(r.payments || []), payment] }) : r), setRows, setSummary);
     }
     setPayAmount((p) => ({ ...p, [id]: "" }));
-    void payReceivable(id, value, method).then(async () => { await load(); await onChanged(); }).catch(() => { applyReceivableRows(previous, setRows, setSummary); alert("입금 처리에 실패했습니다. 다시 시도해주세요."); });
+    void payReceivable(id, value, method).then(() => { void onChanged().catch(() => {}); }).catch(() => { applyReceivableRows(previous, setRows, setSummary); alert("입금 처리에 실패했습니다. 다시 시도해주세요."); });
   };
 
   const complete = async (id: string) => {
@@ -322,14 +320,14 @@ function ReceivablePage({ onChanged, focusDate }: { onChanged: () => Promise<voi
       const payment = { id: makeLocalId(), date: todayString(), receivableId: id, name: target.name, status: "완납", method, amount: remain, balance: 0, memo: "" };
       applyReceivableRows(rows.map((r) => r.id === id ? normalizeReceivable({ ...r, paid: Number(r.amount || 0), payments: remain > 0 ? [...(r.payments || []), payment] : (r.payments || []) }) : r), setRows, setSummary);
     }
-    void completeReceivable(id, method).then(async () => { await load(); await onChanged(); }).catch(() => { applyReceivableRows(previous, setRows, setSummary); alert("완납 처리에 실패했습니다. 다시 시도해주세요."); });
+    void completeReceivable(id, method).then(() => { void onChanged().catch(() => {}); }).catch(() => { applyReceivableRows(previous, setRows, setSummary); alert("완납 처리에 실패했습니다. 다시 시도해주세요."); });
   };
 
   const remove = async (id: string) => {
     if (!confirm("삭제할까요?")) return;
     const previous = rows;
     applyReceivableRows(rows.filter((r) => r.id !== id), setRows, setSummary);
-    void deleteReceivable(id).then(async () => { await load(); await onChanged(); }).catch(() => { applyReceivableRows(previous, setRows, setSummary); alert("삭제에 실패했습니다. 다시 시도해주세요."); });
+    void deleteReceivable(id).then(() => { void onChanged().catch(() => {}); }).catch(() => { applyReceivableRows(previous, setRows, setSummary); alert("삭제에 실패했습니다. 다시 시도해주세요."); });
   };
 
   const shown = focusDate ? rows.filter((r) => r.date === focusDate) : rows;
