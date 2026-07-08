@@ -2,11 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Banknote, BarChart3, CalendarDays, ChevronLeft, ChevronRight, CreditCard, Filter, Home, Landmark, Pencil, Plus, Search, Settings, Trash2, UserRoundCheck, UsersRound, Wallet, X } from "lucide-react";
-import { addEmployee, addLabor, addPersonalExpense, addReceivable, addTransaction, completeReceivable, deactivateEmployee, deleteLabor, deletePersonalExpense, deleteReceivable, deleteTransaction, getEmployees, getExpenseCategories, getHome, getInit, getLabor, getPersonalExpenses, getReceivables, getStats, payReceivable, preloadDay, updateReceivable, updateTransaction } from "@/lib/api";
+import { addEmployee, addLabor, addPersonalExpense, addReceivable, addTransaction, completeReceivable, deactivateEmployee, deleteLabor, deletePersonalExpense, deleteReceivable, deleteTransaction, getEmployees, getExpenseCategories, getHome, getInit, getLabor, getPersonalExpenses, getReceivables, getStats, payReceivable, preloadDay, updateLabor, updateReceivable, updateTransaction } from "@/lib/api";
 import { addDays, money, todayString } from "@/lib/formatter";
 import type { Dashboard, Employee, ExpenseCategory, LaborEntry, LaborSummaryByEmployee, PageKey, PaymentMethod, PersonalExpense, PersonalExpenseSummary, Receivable, ReceivableSummary, StatsSummary, Transaction, TransactionType } from "@/lib/types";
 
-const APP_VERSION = "V4.1.1-INSTANT-SAVE-FIX";
+const APP_VERSION = "V4.1.2-LABOR-EDIT-FIX";
 const EMPTY_DASHBOARD: Dashboard = { date: todayString(), totalSales: 0, totalExpense: 0, profit: 0, cardSales: 0, cashSales: 0, bankSales: 0, cumulativeCash: 0, laborExpense: 0, receivableBalance: 0, receivableCount: 0, transactionCount: 0 };
 const EMPTY_RCV: ReceivableSummary = { totalBalance: 0, count: 0, paidTotal: 0 };
 const makeLocalId = () => `LOCAL-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -118,7 +118,128 @@ function PersonalPage({ date, onChanged }: { date: string; onChanged: () => Prom
 
 function StatsPage() { const [startDate, setStartDate] = useState(todayString().slice(0, 8) + "01"); const [endDate, setEndDate] = useState(todayString()); const [stats, setStats] = useState<StatsSummary | null>(null); const [filters, setFilters] = useState<TransactionFilters>(DEFAULT_FILTERS); const [categories, setCategories] = useState<ExpenseCategory[]>(FALLBACK_CATEGORIES); const [personalMode, setPersonalMode] = useState<"none" | "all" | "연주" | "관수">("none"); const load = async () => { const [res, cats] = await Promise.all([getStats(startDate, endDate), getExpenseCategories().catch(() => ({ rows: FALLBACK_CATEGORIES }))]); if (res.ok) setStats(res.stats); setCategories(cats.rows?.length ? cats.rows : FALLBACK_CATEGORIES); }; useEffect(() => { load().catch(() => {}); setFilters(DEFAULT_FILTERS); setPersonalMode("none"); }, [startDate, endDate]); const s = stats; const rows = s?.rows || []; const filtered = useMemo(() => applyTransactionFilters(rows, filters), [rows, filters]); const personalRows = s?.personalRows || []; const shownPersonal = personalMode === "연주" ? personalRows.filter((r) => r.owner === "연주") : personalMode === "관수" ? personalRows.filter((r) => r.owner === "관수") : personalMode === "all" ? personalRows : []; const top3 = useMemo(() => { const map: Record<string, number> = {}; rows.filter((r) => r.type === "지출" && r.category).forEach((r) => { map[r.category] = (map[r.category] || 0) + Number(r.amount || 0); }); return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 3); }, [rows]); const card = (title: string, value: number, color: string, onClick?: () => void) => <button onClick={onClick} className="rounded-3xl bg-[#111A2E] p-4 text-left shadow-sm active:scale-[0.98]"><div className="text-sm text-slate-300">{title}</div><div className={`mt-1 font-black ${color}`}>₩ {money(value)}</div></button>; const setF = (next: Partial<TransactionFilters>) => { setPersonalMode("none"); setFilters((f) => ({ ...f, ...next })); }; return <div className="space-y-4"><div className="rounded-3xl bg-[#111A2E] p-4"><div className="mb-3 text-lg font-black">통계 기간</div><div className="grid grid-cols-2 gap-2"><input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="h-12 rounded-2xl bg-slate-800 px-3 text-white outline-none" /><input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="h-12 rounded-2xl bg-slate-800 px-3 text-white outline-none" /></div></div>{s && <><button onClick={() => setF({ method: "현금" })} className="w-full rounded-3xl bg-green-500 p-5 text-left shadow-lg active:scale-[0.98]"><div className="text-sm font-bold opacity-90">누적금</div><div className="mt-1 text-3xl font-black">₩ {money(s.cumulativeCash || 0)}</div><div className="mt-1 text-xs opacity-80">선택 기간 현금매출 - 현금지출</div></button><div className="grid grid-cols-2 gap-3">{card("총매출", s.totalSales, "text-green-400", () => setF({ type: "매출" }))}{card("총지출", s.totalExpense, "text-red-400", () => setF({ type: "지출" }))}{card("순이익", s.profit, "text-blue-400")}{card("개인지출", s.personal.total, "text-blue-400", () => setPersonalMode("all"))}</div><div className="grid grid-cols-3 gap-3">{card("카드", s.cardSales, "text-blue-400", () => setF({ method: "카드" }))}{card("현금", s.cashSales, "text-orange-400", () => setF({ method: "현금" }))}{card("계좌", s.bankSales, "text-purple-400", () => setF({ method: "계좌" }))}</div><div className="rounded-3xl bg-[#111A2E] p-4"><div className="font-black">개인지출</div><div className="mt-3 grid grid-cols-3 gap-2 text-sm"><button onClick={() => setPersonalMode("연주")} className="rounded-2xl bg-slate-800 p-3 text-left">연주<br /><b className="text-green-400">₩ {money(s.personal.yeonju)}</b></button><button onClick={() => setPersonalMode("관수")} className="rounded-2xl bg-slate-800 p-3 text-left">관수<br /><b className="text-green-400">₩ {money(s.personal.gwansu)}</b></button><button onClick={() => setPersonalMode("all")} className="rounded-2xl bg-slate-800 p-3 text-left">합계<br /><b className="text-green-400">₩ {money(s.personal.total)}</b></button></div></div><div className="rounded-3xl bg-[#111A2E] p-4"><div className="font-black">TOP3 지출항목</div>{!top3.length && <div className="mt-2 text-sm text-slate-400">지출항목 데이터가 없습니다.</div>}{top3.map(([name, value], idx) => <div key={name} className="mt-2 flex justify-between rounded-2xl bg-slate-800 p-3 text-sm"><span>{idx + 1}. {name}</span><b>₩ {money(value)}</b></div>)}</div>{personalMode === "none" && <><TransactionFilterBar filters={filters} categories={categories} onChange={setF} onReset={() => setFilters(DEFAULT_FILTERS)} resultCount={filtered.length} resultTotal={filterTotal(filtered)} /><div className="mt-5 text-lg font-black">🧾 통계 거래내역</div><TransactionList items={filtered} onDelete={() => {}} onEdit={() => {}} allowActions={false} /></>}{personalMode !== "none" && <><button onClick={() => setPersonalMode("none")} className="rounded-2xl bg-slate-800 px-3 py-2 text-sm">거래내역으로 돌아가기</button><div className="mt-5 text-lg font-black">🔵 {personalMode === "all" ? "개인지출 전체" : `${personalMode} 개인지출`}</div><PersonalExpenseList items={shownPersonal} /></>}</>}</div>; }
 
-function LaborPage({ date, onChanged }: { date: string; onChanged: () => Promise<void> }) { const [employees, setEmployees] = useState<Employee[]>([]); const [rows, setRows] = useState<LaborEntry[]>([]); const [summary, setSummary] = useState<{ totalTc: number; totalAmount: number; byEmployee: LaborSummaryByEmployee[] }>({ totalTc: 0, totalAmount: 0, byEmployee: [] }); const [employee, setEmployee] = useState(""); const [tableNo, setTableNo] = useState("없음"); const [tc, setTc] = useState(""); const [dailyPay, setDailyPay] = useState(""); const [memo, setMemo] = useState(""); const load = async () => { const [empRes, laborRes] = await Promise.all([getEmployees(), getLabor(date)]); if (empRes.ok) { setEmployees(empRes.rows || []); setEmployee((e) => e || empRes.rows?.[0]?.name || ""); } if (laborRes.ok) { setRows(laborRes.rows || []); setSummary(laborRes.summary); } }; useEffect(() => { load().catch(() => {}); }, [date]); const applyRows = (next: LaborEntry[]) => { setRows(next); setSummary(syncLaborSummary(next)); }; const save = async () => { if (!employee) return alert("직원을 선택해주세요."); const tcValue = parseNum(tc); const dailyValue = parseNum(dailyPay); const cleanTable = tableNo === "없음" ? "" : tableNo.replace("T", ""); const previous = rows; const row: LaborEntry = { id: makeLocalId(), transactionId: "", date, employee, tableNo: cleanTable, tc: tcValue, dailyPay: dailyValue, amount: tcValue + dailyValue, memo }; applyRows([row, ...rows]); setTc(""); setDailyPay(""); setMemo(""); void addLabor({ date, employee, tableNo: cleanTable, tc: tcValue, dailyPay: dailyValue, memo }).then(async () => { await load(); await onChanged(); }).catch(() => { applyRows(previous); alert("저장에 실패했습니다. 다시 시도해주세요."); }); }; const remove = async (id: string) => { if (!confirm("인건비 내역을 삭제할까요?")) return; const previous = rows; applyRows(rows.filter((r) => r.id !== id)); void deleteLabor(id).then(async () => { await load(); await onChanged(); }).catch(() => { applyRows(previous); alert("삭제에 실패했습니다. 다시 시도해주세요."); }); }; return <div className="space-y-4"><div className="rounded-3xl bg-pink-500 p-5"><div className="text-sm font-bold opacity-90">지급금액</div><div className="mt-1 text-3xl font-black">₩ {money(summary.totalAmount || 0)}</div><div className="mt-1 text-sm">TC + 일비 합산</div></div><div className="grid grid-cols-2 gap-3">{summary.byEmployee.map((r) => <div key={r.employee} className="rounded-3xl bg-[#111A2E] p-4"><div className="text-sm text-slate-300">{r.employee} 지급금액</div><div className="mt-1 font-black text-pink-400">₩ {money(r.amount || 0)}</div></div>)}</div><div className="rounded-3xl bg-[#111A2E] p-4"><div className="mb-3 text-lg font-black">인건비 입력</div><select value={employee} onChange={(e) => setEmployee(e.target.value)} className="h-12 w-full rounded-2xl bg-slate-800 px-4 text-white outline-none">{employees.map((e) => <option key={e.id} value={e.name}>{e.name}</option>)}</select><select value={tableNo} onChange={(e) => setTableNo(e.target.value)} className="mt-3 h-12 w-full rounded-2xl bg-slate-800 px-4 text-white outline-none">{LABOR_TABLES.map((t) => <option key={t} value={t}>{t}</option>)}</select><input inputMode="numeric" value={tc} onChange={(e) => setTc(e.target.value.replace(/[^0-9]/g, ""))} placeholder="TC" className="mt-3 h-12 w-full rounded-2xl bg-slate-800 px-4 text-white outline-none" /><input inputMode="numeric" value={dailyPay} onChange={(e) => setDailyPay(e.target.value.replace(/[^0-9]/g, ""))} placeholder="일비" className="mt-3 h-12 w-full rounded-2xl bg-slate-800 px-4 text-white outline-none" /><input value={memo} onChange={(e) => setMemo(e.target.value)} placeholder="메모" className="mt-3 h-12 w-full rounded-2xl bg-slate-800 px-4 text-white outline-none" /><button onClick={save} className="mt-4 h-14 w-full rounded-2xl bg-pink-500 text-lg font-black">저장</button></div><div className="space-y-3">{rows.map((item) => <div key={item.id} className="rounded-3xl border-l-4 border-pink-500/50 bg-[#111A2E] p-4"><div className="flex justify-between gap-3"><div><div className="font-black">{item.employee}</div><div className="mt-1 text-sm text-slate-400">{item.tableNo ? `${item.tableNo}T` : "테이블 없음"} · TC ₩ {money(item.tc || 0)} · 일비 ₩ {money(item.dailyPay || 0)}</div>{item.memo && <div className="mt-1 text-sm text-slate-300">📝 {item.memo}</div>}</div><div className="text-right"><div className="text-sm text-slate-400">지급금액</div><div className="font-black text-pink-400">₩ {money(item.amount || ((item.tc || 0) + (item.dailyPay || 0)))}</div><button onClick={() => remove(item.id)} className="mt-2 text-xs text-red-400">삭제</button></div></div></div>)}</div></div>; }
+function LaborPage({ date, onChanged }: { date: string; onChanged: () => Promise<void> }) {
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [rows, setRows] = useState<LaborEntry[]>([]);
+  const [summary, setSummary] = useState<{ totalTc: number; totalAmount: number; byEmployee: LaborSummaryByEmployee[] }>({ totalTc: 0, totalAmount: 0, byEmployee: [] });
+  const [employee, setEmployee] = useState("");
+  const [tableNo, setTableNo] = useState("없음");
+  const [tc, setTc] = useState("");
+  const [dailyPay, setDailyPay] = useState("");
+  const [memo, setMemo] = useState("");
+  const [filterEmployee, setFilterEmployee] = useState("전체");
+  const [keyword, setKeyword] = useState("");
+  const [editId, setEditId] = useState<string | null>(null);
+
+  const load = async () => {
+    const [empRes, laborRes] = await Promise.all([getEmployees(), getLabor(date)]);
+    if (empRes.ok) {
+      setEmployees(empRes.rows || []);
+      setEmployee((e) => e || empRes.rows?.[0]?.name || "");
+    }
+    if (laborRes.ok) {
+      const normalized = (laborRes.rows || []).map((r) => ({ ...r, amount: (r.tc || 0) + (r.dailyPay || 0) }));
+      setRows(normalized);
+      setSummary(syncLaborSummary(normalized));
+    }
+  };
+
+  useEffect(() => { load().catch(() => {}); }, [date]);
+
+  const applyRows = (next: LaborEntry[]) => {
+    const normalized = next.map((r) => ({ ...r, amount: (r.tc || 0) + (r.dailyPay || 0) }));
+    setRows(normalized);
+    setSummary(syncLaborSummary(normalized));
+  };
+
+  const resetForm = () => {
+    setTc("");
+    setDailyPay("");
+    setMemo("");
+    setTableNo("없음");
+    setEditId(null);
+  };
+
+  const save = async () => {
+    if (!employee) return alert("직원을 선택해주세요.");
+    const tcValue = parseNum(tc);
+    const dailyValue = parseNum(dailyPay);
+    const cleanTable = tableNo === "없음" ? "" : tableNo.replace("T", "");
+    const previous = rows;
+
+    if (editId) {
+      const next = rows.map((r) => r.id === editId ? { ...r, date, employee, tableNo: cleanTable, tc: tcValue, dailyPay: dailyValue, amount: tcValue + dailyValue, memo } : r);
+      applyRows(next);
+      const targetId = editId;
+      resetForm();
+      void updateLabor(targetId, { date, employee, tableNo: cleanTable, tc: tcValue, dailyPay: dailyValue, memo }).then(async () => {
+        await load();
+        await onChanged();
+        alert("수정되었습니다.");
+      }).catch(() => {
+        applyRows(previous);
+        alert("수정에 실패했습니다. 다시 시도해주세요.");
+      });
+      return;
+    }
+
+    const row: LaborEntry = { id: makeLocalId(), transactionId: "", date, employee, tableNo: cleanTable, tc: tcValue, dailyPay: dailyValue, amount: tcValue + dailyValue, memo };
+    applyRows([row, ...rows]);
+    resetForm();
+    void addLabor({ date, employee, tableNo: cleanTable, tc: tcValue, dailyPay: dailyValue, memo }).then(async () => {
+      await load();
+      await onChanged();
+      alert("저장되었습니다.");
+    }).catch(() => {
+      applyRows(previous);
+      alert("저장에 실패했습니다. 다시 시도해주세요.");
+    });
+  };
+
+  const startEdit = (item: LaborEntry) => {
+    setEditId(item.id);
+    setEmployee(item.employee);
+    setTableNo(item.tableNo ? `${item.tableNo}T` : "없음");
+    setTc(String(item.tc || ""));
+    setDailyPay(String(item.dailyPay || ""));
+    setMemo(item.memo || "");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const remove = async (id: string) => {
+    if (!confirm("인건비 내역을 삭제할까요?")) return;
+    const previous = rows;
+    applyRows(rows.filter((r) => r.id !== id));
+    if (editId === id) resetForm();
+    void deleteLabor(id).then(async () => {
+      await load();
+      await onChanged();
+      alert("삭제되었습니다.");
+    }).catch(() => {
+      applyRows(previous);
+      alert("삭제에 실패했습니다. 다시 시도해주세요.");
+    });
+  };
+
+  const filteredRows = useMemo(() => {
+    const q = keyword.trim().toLowerCase();
+    return rows.filter((r) => {
+      const byEmployee = filterEmployee === "전체" || r.employee === filterEmployee;
+      const hay = `${r.employee} ${r.tableNo ? `${r.tableNo}T` : "테이블 없음"} ${r.memo || ""}`.toLowerCase();
+      return byEmployee && (!q || hay.includes(q));
+    });
+  }, [rows, filterEmployee, keyword]);
+
+  const visibleSummary = useMemo(() => syncLaborSummary(filteredRows), [filteredRows]);
+
+  return <div className="space-y-4">
+    <div className="rounded-3xl bg-pink-500 p-5"><div className="text-sm font-bold opacity-90">지급금액</div><div className="mt-1 text-3xl font-black">₩ {money(summary.totalAmount || 0)}</div><div className="mt-1 text-sm">TC + 일비 합산</div></div>
+    <div className="grid grid-cols-2 gap-3">{summary.byEmployee.map((r) => <div key={r.employee} className="rounded-3xl bg-[#111A2E] p-4"><div className="text-sm text-slate-300">{r.employee} 지급금액</div><div className="mt-1 font-black text-pink-400">₩ {money(r.amount || 0)}</div></div>)}</div>
+    <div className="rounded-3xl bg-[#111A2E] p-4"><div className="mb-3 text-lg font-black">{editId ? "인건비 수정" : "인건비 입력"}</div><select value={employee} onChange={(e) => setEmployee(e.target.value)} className="h-12 w-full rounded-2xl bg-slate-800 px-4 text-white outline-none">{employees.map((e) => <option key={e.id} value={e.name}>{e.name}</option>)}</select><select value={tableNo} onChange={(e) => setTableNo(e.target.value)} className="mt-3 h-12 w-full rounded-2xl bg-slate-800 px-4 text-white outline-none">{LABOR_TABLES.map((t) => <option key={t} value={t}>{t}</option>)}</select><input inputMode="numeric" value={tc} onChange={(e) => setTc(e.target.value.replace(/[^0-9]/g, ""))} placeholder="TC" className="mt-3 h-12 w-full rounded-2xl bg-slate-800 px-4 text-white outline-none" /><input inputMode="numeric" value={dailyPay} onChange={(e) => setDailyPay(e.target.value.replace(/[^0-9]/g, ""))} placeholder="일비" className="mt-3 h-12 w-full rounded-2xl bg-slate-800 px-4 text-white outline-none" /><input value={memo} onChange={(e) => setMemo(e.target.value)} placeholder="메모" className="mt-3 h-12 w-full rounded-2xl bg-slate-800 px-4 text-white outline-none" /><div className="mt-4 flex gap-2"><button onClick={save} className="h-14 flex-1 rounded-2xl bg-pink-500 text-lg font-black">{editId ? "수정 저장" : "저장"}</button>{editId && <button onClick={resetForm} className="h-14 rounded-2xl bg-slate-700 px-4 font-black">취소</button>}</div></div>
+    <div className="rounded-3xl bg-[#111A2E] p-4"><div className="mb-3 flex items-center gap-2 text-lg font-black"><Search size={18} /> 인건비 내역 검색</div><div className="grid grid-cols-2 gap-2"><select value={filterEmployee} onChange={(e) => setFilterEmployee(e.target.value)} className="h-12 rounded-2xl bg-slate-800 px-3 text-white outline-none"><option value="전체">전체 직원</option>{employees.map((e) => <option key={e.id} value={e.name}>{e.name}</option>)}</select><input value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="이름/테이블/메모" className="h-12 rounded-2xl bg-slate-800 px-3 text-white outline-none" /></div><div className="mt-3 text-sm text-slate-400">검색결과 {filteredRows.length}건 · 지급 ₩ {money(visibleSummary.totalAmount || 0)}</div></div>
+    <div className="space-y-3">{filteredRows.map((item) => <div key={item.id} className="rounded-3xl border-l-4 border-pink-500/50 bg-[#111A2E] p-4"><div className="flex justify-between gap-3"><div><div className="font-black">{item.employee}</div><div className="mt-1 text-sm text-slate-400">{item.tableNo ? `${item.tableNo}T` : "테이블 없음"} · TC ₩ {money(item.tc || 0)} · 일비 ₩ {money(item.dailyPay || 0)}</div>{item.memo && <div className="mt-1 text-sm text-slate-300">📝 {item.memo}</div>}</div><div className="text-right"><div className="text-sm text-slate-400">지급금액</div><div className="font-black text-pink-400">₩ {money((item.tc || 0) + (item.dailyPay || 0))}</div><div className="mt-2 flex justify-end gap-3"><button onClick={() => startEdit(item)} className="text-xs text-pink-300">수정</button><button onClick={() => remove(item.id)} className="text-xs text-red-400">삭제</button></div></div></div></div>)}</div>
+  </div>;
+}
 
 function ReceivablePage({ onChanged, focusDate }: { onChanged: () => Promise<void>; focusDate?: string }) {
   const [rows, setRows] = useState<Receivable[]>([]);

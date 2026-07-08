@@ -118,6 +118,7 @@ export const addEmployee = async (name: string) => { const res = await postJson<
 export const deactivateEmployee = async (id: string) => { const res = await postJson<ApiResult<Record<string, never>>>({ action: "deactivateEmployee", id }); invalidateEmployees(); return res; };
 export const getLabor = (date: string, options?: { force?: boolean }) => getJson<ApiResult<{ rows: LaborEntry[]; summary: { totalTc: number; totalAmount: number; byEmployee: LaborSummaryByEmployee[] } }>>("labor", { date }, options);
 export const addLabor = async (data: { date: string; employee: string; tableNo: string; tc: number; dailyPay: number; memo: string }) => { const res = await postJson<ApiResult<{ id?: string }>>({ action: "addLabor", data }); invalidateLabor(data.date); return res; };
+export const updateLabor = async (id: string, data: { date: string; employee: string; tableNo: string; tc: number; dailyPay: number; memo: string }) => { const res = await postJson<ApiResult<Record<string, never>>>({ action: "updateLabor", id, data }); invalidateLabor(data.date); return res; };
 export const deleteLabor = async (id: string) => { const res = await postJson<ApiResult<Record<string, never>>>({ action: "deleteLabor", id }); invalidateLabor(); return res; };
 
 export const getReceivables = (options?: { force?: boolean }) => getJson<ApiResult<{ rows: Receivable[]; summary: ReceivableSummary }>>("receivables", undefined, options);

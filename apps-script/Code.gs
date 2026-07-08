@@ -20,7 +20,7 @@ function doGet(e) {
   try {
     const p = e.parameter || {};
     const action = p.action || 'ping';
-    if (action === 'ping') return json({ ok: true, message: 'DRAMA API OK', version: 'V4.1.1-INSTANT-SAVE-FIX' });
+    if (action === 'ping') return json({ ok: true, message: 'DRAMA API OK', version: 'V4.1.2-LABOR-EDIT-FIX' });
     if (action === 'init') return json(getInit_(p.date, p.startDate, p.endDate));
     if (action === 'home') return json(getHome_(p.date));
     if (action === 'dashboard') return json(getDashboard_(p.date));
@@ -48,6 +48,7 @@ function doPost(e) {
     if (action === 'addEmployee') return json(addEmployee_(body.name));
     if (action === 'deactivateEmployee') return json(deactivateEmployee_(body.id));
     if (action === 'addLabor') return json(addLabor_(body.data));
+    if (action === 'updateLabor') return json(updateLabor_(body.id, body.data));
     if (action === 'deleteLabor') return json(deleteLabor_(body.id));
     if (action === 'addReceivable') return json(addReceivable_(body.data));
     if (action === 'updateReceivable') return json(updateReceivable_(body.id, body.data));
@@ -357,7 +358,7 @@ function addEmployee_(name) { ensureEmployees_(); const sheet = sh_(SHEETS.emplo
 function deactivateEmployee_(id) { ensureEmployees_(); const sheet = sh_(SHEETS.employees); const values = sheet.getDataRange().getValues(); for (let i = 1; i < values.length; i++) if (String(values[i][3]) === String(id)) { sheet.getRange(i + 1, 2).setValue('N'); cacheRemove_(['employees']); return { ok: true }; } return { ok: false, error: 'EMPLOYEE_NOT_FOUND' }; }
 
 function mapLaborRow_(row) {
-  return { date: formatDate_(row[0]), employee: String(row[1] || ''), tableNo: String(row[2] || ''), tc: Number(row[3] || 0), dailyPay: parseAmount_(row[4]), amount: parseAmount_(row[4]), memo: String(row[5] || ''), id: String(row[6] || ''), transactionId: String(row[7] || '') };
+  return { date: formatDate_(row[0]), employee: String(row[1] || ''), tableNo: String(row[2] || ''), tc: Number(row[3] || 0), dailyPay: parseAmount_(row[4]), amount: Number(row[3] || 0) + parseAmount_(row[4]), memo: String(row[5] || ''), id: String(row[6] || ''), transactionId: String(row[7] || '') };
 }
 function readLabor_() {
   const cached = cacheGet_('labor:all');
@@ -393,6 +394,7 @@ function readLaborByDate_(date) {
 function summarizeLabor_(rows) { let totalTc = 0, totalAmount = 0; const map = {}; rows.forEach(row => { const tc = Number(row.tc || 0); const daily = parseAmount_(row.dailyPay || row.amount); const pay = tc + daily; totalTc += tc; totalAmount += pay; if (!map[row.employee]) map[row.employee] = { employee: row.employee, tc: 0, dailyPay: 0, amount: 0 }; map[row.employee].tc += tc; map[row.employee].dailyPay += daily; map[row.employee].amount += pay; }); return { totalTc, totalAmount, byEmployee: Object.keys(map).map(key => map[key]) }; }
 function getLabor_(date) { const target = String(date || todayKst_()).slice(0, 10); const key = 'labor:result:' + target; const cached = cacheGet_(key); if (cached) return cached; const rows = readLaborByDate_(target); const result = { ok: true, rows, summary: summarizeLabor_(rows) }; cachePut_(key, result, 30); return result; }
 function addLabor_(data) { ensureLaborHeader_(); const laborId = makeId_('LABOR'); const date = String(data.date || todayKst_()).slice(0, 10); const dailyPay = parseAmount_(data.dailyPay || data.amount); sh_(SHEETS.labor).appendRow([date, String(data.employee || ''), String(data.tableNo || ''), Number(data.tc || 0), dailyPay, String(data.memo || ''), laborId, '']); invalidateDate_(date); return { ok: true, id: laborId }; }
+function updateLabor_(id, data) { ensureLaborHeader_(); const sheet = sh_(SHEETS.labor); const values = sheet.getDataRange().getValues(); for (let i = 1; i < values.length; i++) if (String(values[i][6]) === String(id)) { const oldDate = formatDate_(values[i][0] || todayKst_()); const date = String(data.date || oldDate || todayKst_()).slice(0, 10); const dailyPay = parseAmount_(data.dailyPay || data.amount); sheet.getRange(i + 1, 1, 1, 8).setValues([[date, String(data.employee || ''), String(data.tableNo || ''), Number(data.tc || 0), dailyPay, String(data.memo || ''), String(id), String(values[i][7] || '')]]); invalidateDate_(oldDate); invalidateDate_(date); return { ok: true }; } return { ok: false, error: 'LABOR_NOT_FOUND' }; }
 function deleteLabor_(id) { ensureLaborHeader_(); const sheet = sh_(SHEETS.labor); const values = sheet.getDataRange().getValues(); for (let i = 1; i < values.length; i++) if (String(values[i][6]) === String(id)) { const date = values[i][0] || todayKst_(); sheet.deleteRow(i + 1); invalidateDate_(date); return { ok: true }; } return { ok: false, error: 'LABOR_NOT_FOUND' }; }
 
 function readReceivables_() {
