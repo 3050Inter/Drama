@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Banknote, BarChart3, CalendarDays, ChevronLeft, ChevronRight, CreditCard, Filter, Home, Landmark, Pencil, Plus, Search, Settings, Trash2, UserRoundCheck, UsersRound, Wallet, X } from "lucide-react";
-import { addEmployee, addLabor, addPersonalExpense, addReceivable, addTransaction, completeReceivable, deactivateEmployee, deleteLabor, deletePersonalExpense, deleteReceivable, deleteTransaction, getEmployees, getExpenseCategories, getHome, getInit, getLabor, getPersonalExpenses, getReceivables, getStats, payReceivable, preloadDay, updateLabor, updateReceivable, updateTransaction } from "@/lib/api";
+import { addEmployee, addLabor, addPersonalExpense, addReceivable, addTransaction, completeReceivable, deactivateEmployee, deleteLabor, deletePersonalExpense, deleteReceivable, deleteTransaction, getEmployees, getExpenseCategories, getHome, getLabor, getPersonalExpenses, getReceivables, getStats, payReceivable, preloadDay, updateLabor, updateReceivable, updateTransaction } from "@/lib/api";
 import { addDays, money, todayString } from "@/lib/formatter";
 import type { Dashboard, Employee, ExpenseCategory, LaborEntry, LaborSummaryByEmployee, PageKey, PaymentMethod, PersonalExpense, PersonalExpenseSummary, Receivable, ReceivableSummary, StatsSummary, Transaction, TransactionType } from "@/lib/types";
 
@@ -413,21 +413,14 @@ export default function Page() {
     const seq = ++reloadSeq.current;
     try {
       setLoading(true);
-      const initRes = await getInit(date, { force });
+      // Do not block the home screen on data owned by other tabs. Those tabs
+      // already request and cache their data when the user opens them.
+      const homeRes = await getHome(date, { force });
       if (seq !== reloadSeq.current) return;
-      if (initRes.ok && initRes.home?.ok) {
-        setDashboard(initRes.home.dashboard);
-        setTransactions(initRes.home.rows || []);
-        if (initRes.home.categories?.length) setCategories(initRes.home.categories);
-        else if (initRes.categories?.ok && initRes.categories.rows?.length) setCategories(initRes.categories.rows);
-      } else {
-        const homeRes = await getHome(date, { force });
-        if (seq !== reloadSeq.current) return;
-        if (homeRes.ok) {
-          setDashboard(homeRes.dashboard);
-          setTransactions(homeRes.rows || []);
-          if (homeRes.categories?.length) setCategories(homeRes.categories);
-        }
+      if (homeRes.ok) {
+        setDashboard(homeRes.dashboard);
+        setTransactions(homeRes.rows || []);
+        if (homeRes.categories?.length) setCategories(homeRes.categories);
       }
       setApiReady(true);
     } catch {

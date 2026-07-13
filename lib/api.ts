@@ -104,9 +104,11 @@ export const getInit = async (date: string, options?: { force?: boolean }) => {
   }
   return res;
 };
-export const preloadDay = (date: string) => { void getInit(date).catch(() => {}); };
-
 export const getHome = (date: string, options?: { force?: boolean }) => getJson<ApiResult<{ dashboard: Dashboard; rows: Transaction[]; categories?: ExpenseCategory[] }>>("home", { date }, options);
+// The home screen only needs its own summary and transactions.  Keep adjacent
+// days warm without paying for the full init payload (stats, labor, receivables,
+// employees, and personal expenses).
+export const preloadDay = (date: string) => { void getHome(date).catch(() => {}); };
 export const getTransactions = (date: string, options?: { force?: boolean }) => getJson<ApiResult<{ rows: Transaction[] }>>("transactions", { date }, options);
 export const getStats = (startDate: string, endDate: string, options?: { force?: boolean }) => getJson<ApiResult<{ stats: StatsSummary }>>("stats", { startDate, endDate }, options);
 export const getMonthly = (month: string, options?: { force?: boolean }) => getJson<ApiResult<{ monthly: MonthlySummary; dailySales: DailySales[]; laborSummary: { totalTc: number; totalAmount: number; byEmployee: LaborSummaryByEmployee[] }; rows: Transaction[] }>>("monthly", { month }, options);
