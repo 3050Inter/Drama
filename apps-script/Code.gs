@@ -29,7 +29,7 @@ function doGet(e) {
     if (action === 'stats') return json(getStats_(p.startDate, p.endDate));
     if (action === 'categories') return json(getExpenseCategories_());
     if (action === 'employees') return json(getEmployees_());
-    if (action === 'labor') return json(getLabor_(p.date));
+    if (action === 'labor') return json(getLabor_(p.date, p.startDate, p.endDate));
     if (action === 'receivables') return json(getReceivables_());
     if (action === 'personal') return json(getPersonalExpenses_(p.date));
     return json({ ok: false, error: 'UNKNOWN_ACTION' });
@@ -392,7 +392,19 @@ function readLaborByDate_(date) {
   return rows;
 }
 function summarizeLabor_(rows) { let totalTc = 0, totalAmount = 0; const map = {}; rows.forEach(row => { const tc = Number(row.tc || 0); const daily = parseAmount_(row.dailyPay || row.amount); const pay = tc + daily; totalTc += tc; totalAmount += pay; if (!map[row.employee]) map[row.employee] = { employee: row.employee, tc: 0, dailyPay: 0, amount: 0 }; map[row.employee].tc += tc; map[row.employee].dailyPay += daily; map[row.employee].amount += pay; }); return { totalTc, totalAmount, byEmployee: Object.keys(map).map(key => map[key]) }; }
-function getLabor_(date) { const target = String(date || todayKst_()).slice(0, 10); const key = 'labor:result:' + target; const cached = cacheGet_(key); if (cached) return cached; const rows = readLaborByDate_(target); const result = { ok: true, rows, summary: summarizeLabor_(rows) }; cachePut_(key, result, 30); return result; }
+function getLabor_(date, startDate, endDate) {
+  const start = String(startDate || date || todayKst_()).slice(0, 10);
+  const end = String(endDate || start).slice(0, 10);
+  const from = start <= end ? start : end;
+  const to = start <= end ? end : start;
+  const key = 'labor:result:' + from + ':' + to;
+  const cached = cacheGet_(key);
+  if (cached) return cached;
+  const rows = readLabor_().filter(row => row.date >= from && row.date <= to).reverse();
+  const result = { ok: true, rows, summary: summarizeLabor_(rows) };
+  cachePut_(key, result, 30);
+  return result;
+}
 function addLabor_(data) { ensureLaborHeader_(); const laborId = makeId_('LABOR'); const date = String(data.date || todayKst_()).slice(0, 10); const dailyPay = parseAmount_(data.dailyPay || data.amount); sh_(SHEETS.labor).appendRow([date, String(data.employee || ''), String(data.tableNo || ''), Number(data.tc || 0), dailyPay, String(data.memo || ''), laborId, '']); invalidateDate_(date); return { ok: true, id: laborId }; }
 function updateLabor_(id, data) { ensureLaborHeader_(); const sheet = sh_(SHEETS.labor); const values = sheet.getDataRange().getValues(); for (let i = 1; i < values.length; i++) if (String(values[i][6]) === String(id)) { const oldDate = formatDate_(values[i][0] || todayKst_()); const date = String(data.date || oldDate || todayKst_()).slice(0, 10); const dailyPay = parseAmount_(data.dailyPay || data.amount); sheet.getRange(i + 1, 1, 1, 8).setValues([[date, String(data.employee || ''), String(data.tableNo || ''), Number(data.tc || 0), dailyPay, String(data.memo || ''), String(id), String(values[i][7] || '')]]); invalidateDate_(oldDate); invalidateDate_(date); return { ok: true }; } return { ok: false, error: 'LABOR_NOT_FOUND' }; }
 function deleteLabor_(id) { ensureLaborHeader_(); const sheet = sh_(SHEETS.labor); const values = sheet.getDataRange().getValues(); for (let i = 1; i < values.length; i++) if (String(values[i][6]) === String(id)) { const date = values[i][0] || todayKst_(); sheet.deleteRow(i + 1); invalidateDate_(date); return { ok: true }; } return { ok: false, error: 'LABOR_NOT_FOUND' }; }

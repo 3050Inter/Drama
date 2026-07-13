@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Banknote, BarChart3, CalendarDays, ChevronLeft, ChevronRight, CreditCard, Filter, Home, Landmark, Pencil, Plus, Search, Settings, Trash2, UserRoundCheck, UsersRound, Wallet, X } from "lucide-react";
-import { addEmployee, addLabor, addPersonalExpense, addReceivable, addTransaction, completeReceivable, deactivateEmployee, deleteLabor, deletePersonalExpense, deleteReceivable, deleteTransaction, getEmployees, getExpenseCategories, getHome, getLabor, getPersonalExpenses, getReceivables, getStats, payReceivable, preloadDay, updateLabor, updateReceivable, updateTransaction } from "@/lib/api";
+import { addEmployee, addLabor, addPersonalExpense, addReceivable, addTransaction, completeReceivable, deactivateEmployee, deleteLabor, deletePersonalExpense, deleteReceivable, deleteTransaction, getEmployees, getExpenseCategories, getHome, getLaborRange, getPersonalExpenses, getReceivables, getStats, payReceivable, preloadDay, updateLabor, updateReceivable, updateTransaction } from "@/lib/api";
 import { addDays, money, todayString } from "@/lib/formatter";
 import type { Dashboard, Employee, ExpenseCategory, LaborEntry, LaborSummaryByEmployee, PageKey, PaymentMethod, PersonalExpense, PersonalExpenseSummary, Receivable, ReceivableSummary, StatsSummary, Transaction, TransactionType } from "@/lib/types";
 
@@ -121,6 +121,8 @@ function StatsPage() { const [startDate, setStartDate] = useState(todayString().
 function LaborPage({ date, onChanged }: { date: string; onChanged: () => Promise<void> }) {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [rows, setRows] = useState<LaborEntry[]>([]);
+  const [startDate, setStartDate] = useState(date);
+  const [endDate, setEndDate] = useState(date);
   const [summary, setSummary] = useState<{ totalTc: number; totalAmount: number; byEmployee: LaborSummaryByEmployee[] }>({ totalTc: 0, totalAmount: 0, byEmployee: [] });
   const [employee, setEmployee] = useState("");
   const [tableNo, setTableNo] = useState("없음");
@@ -132,7 +134,7 @@ function LaborPage({ date, onChanged }: { date: string; onChanged: () => Promise
   const [editId, setEditId] = useState<string | null>(null);
 
   const load = async () => {
-    const [empRes, laborRes] = await Promise.all([getEmployees(), getLabor(date)]);
+    const [empRes, laborRes] = await Promise.all([getEmployees(), getLaborRange(startDate, endDate)]);
     if (empRes.ok) {
       setEmployees(empRes.rows || []);
       setEmployee((e) => e || empRes.rows?.[0]?.name || "");
@@ -144,7 +146,8 @@ function LaborPage({ date, onChanged }: { date: string; onChanged: () => Promise
     }
   };
 
-  useEffect(() => { load().catch(() => {}); }, [date]);
+  useEffect(() => { setStartDate(date); setEndDate(date); }, [date]);
+  useEffect(() => { load().catch(() => {}); }, [startDate, endDate]);
 
   const applyRows = (next: LaborEntry[]) => {
     const normalized = next.map((r) => ({ ...r, amount: (r.tc || 0) + (r.dailyPay || 0) }));
@@ -170,6 +173,7 @@ function LaborPage({ date, onChanged }: { date: string; onChanged: () => Promise
     if (editId) {
       const next = rows.map((r) => r.id === editId ? { ...r, date, employee, tableNo: cleanTable, tc: tcValue, dailyPay: dailyValue, amount: tcValue + dailyValue, memo } : r);
       applyRows(next);
+      setFilterEmployee(employee);
       const targetId = editId;
       resetForm();
       void updateLabor(targetId, { date, employee, tableNo: cleanTable, tc: tcValue, dailyPay: dailyValue, memo }).then(() => {
@@ -183,6 +187,7 @@ function LaborPage({ date, onChanged }: { date: string; onChanged: () => Promise
 
     const row: LaborEntry = { id: makeLocalId(), transactionId: "", date, employee, tableNo: cleanTable, tc: tcValue, dailyPay: dailyValue, amount: tcValue + dailyValue, memo };
     applyRows([row, ...rows]);
+    setFilterEmployee(employee);
     resetForm();
     void addLabor({ date, employee, tableNo: cleanTable, tc: tcValue, dailyPay: dailyValue, memo }).then((res: any) => {
       if (res?.id) setRows((current) => current.map((r) => r.id === row.id ? { ...r, id: res.id } : r));
@@ -229,7 +234,8 @@ function LaborPage({ date, onChanged }: { date: string; onChanged: () => Promise
 
   return <div className="space-y-4">
     <div className="rounded-3xl bg-pink-500 p-5"><div className="text-sm font-bold opacity-90">지급금액</div><div className="mt-1 text-3xl font-black">₩ {money(summary.totalAmount || 0)}</div><div className="mt-1 text-sm">TC + 일비 합산</div></div>
-    <div className="grid grid-cols-2 gap-3">{summary.byEmployee.map((r) => <div key={r.employee} className="rounded-3xl bg-[#111A2E] p-4"><div className="text-sm text-slate-300">{r.employee} 지급금액</div><div className="mt-1 font-black text-pink-400">₩ {money(r.amount || 0)}</div></div>)}</div>
+    <div className="grid grid-cols-2 gap-3">{visibleSummary.byEmployee.map((r) => <div key={r.employee} className="rounded-3xl bg-[#111A2E] p-4"><div className="text-sm text-slate-300">{r.employee} 지급금액</div><div className="mt-1 font-black text-pink-400">₩ {money(r.amount || 0)}</div></div>)}</div>
+    <div className="rounded-3xl bg-[#111A2E] p-4"><div className="mb-3 text-lg font-black">인건비 조회 기간</div><div className="grid grid-cols-2 gap-2"><input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="h-12 rounded-2xl bg-slate-800 px-3 text-white outline-none" /><input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="h-12 rounded-2xl bg-slate-800 px-3 text-white outline-none" /></div></div>
     <div className="rounded-3xl bg-[#111A2E] p-4"><div className="mb-3 text-lg font-black">{editId ? "인건비 수정" : "인건비 입력"}</div><select value={employee} onChange={(e) => setEmployee(e.target.value)} className="h-12 w-full rounded-2xl bg-slate-800 px-4 text-white outline-none">{employees.map((e) => <option key={e.id} value={e.name}>{e.name}</option>)}</select><select value={tableNo} onChange={(e) => setTableNo(e.target.value)} className="mt-3 h-12 w-full rounded-2xl bg-slate-800 px-4 text-white outline-none">{LABOR_TABLES.map((t) => <option key={t} value={t}>{t}</option>)}</select><input inputMode="numeric" value={tc} onChange={(e) => setTc(e.target.value.replace(/[^0-9]/g, ""))} placeholder="TC" className="mt-3 h-12 w-full rounded-2xl bg-slate-800 px-4 text-white outline-none" /><input inputMode="numeric" value={dailyPay} onChange={(e) => setDailyPay(e.target.value.replace(/[^0-9]/g, ""))} placeholder="일비" className="mt-3 h-12 w-full rounded-2xl bg-slate-800 px-4 text-white outline-none" /><input value={memo} onChange={(e) => setMemo(e.target.value)} placeholder="메모" className="mt-3 h-12 w-full rounded-2xl bg-slate-800 px-4 text-white outline-none" /><div className="mt-4 flex gap-2"><button onClick={save} className="h-14 flex-1 rounded-2xl bg-pink-500 text-lg font-black">{editId ? "수정 저장" : "저장"}</button>{editId && <button onClick={resetForm} className="h-14 rounded-2xl bg-slate-700 px-4 font-black">취소</button>}</div></div>
     <div className="rounded-3xl bg-[#111A2E] p-4"><div className="mb-3 flex items-center gap-2 text-lg font-black"><Search size={18} /> 인건비 내역 검색</div><div className="grid grid-cols-2 gap-2"><select value={filterEmployee} onChange={(e) => setFilterEmployee(e.target.value)} className="h-12 rounded-2xl bg-slate-800 px-3 text-white outline-none"><option value="전체">전체 직원</option>{employees.map((e) => <option key={e.id} value={e.name}>{e.name}</option>)}</select><input value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="이름/테이블/메모" className="h-12 rounded-2xl bg-slate-800 px-3 text-white outline-none" /></div><div className="mt-3 text-sm text-slate-400">검색결과 {filteredRows.length}건 · 지급 ₩ {money(visibleSummary.totalAmount || 0)}</div></div>
     <div className="space-y-3">{filteredRows.map((item) => <div key={item.id} className="rounded-3xl border-l-4 border-pink-500/50 bg-[#111A2E] p-4"><div className="flex justify-between gap-3"><div><div className="font-black">{item.employee}</div><div className="mt-1 text-sm text-slate-400">{item.tableNo ? `${item.tableNo}T` : "테이블 없음"} · TC ₩ {money(item.tc || 0)} · 일비 ₩ {money(item.dailyPay || 0)}</div>{item.memo && <div className="mt-1 text-sm text-slate-300">📝 {item.memo}</div>}</div><div className="text-right"><div className="text-sm text-slate-400">지급금액</div><div className="font-black text-pink-400">₩ {money((item.tc || 0) + (item.dailyPay || 0))}</div><div className="mt-2 flex justify-end gap-3"><button onClick={() => startEdit(item)} className="text-xs text-pink-300">수정</button><button onClick={() => remove(item.id)} className="text-xs text-red-400">삭제</button></div></div></div></div>)}</div>
