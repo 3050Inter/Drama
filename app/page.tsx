@@ -350,7 +350,6 @@ function ReceivablePage({ onChanged, focusDate }: { onChanged: () => Promise<voi
       <div className="space-y-3">
         <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-12 w-full rounded-2xl bg-slate-800 px-4 text-white outline-none" />
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="손님명" className="h-12 w-full rounded-2xl bg-slate-800 px-4 text-white outline-none" />
-        <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="전화번호(선택)" className="h-12 w-full rounded-2xl bg-slate-800 px-4 text-white outline-none" />
         <input inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^0-9]/g, ""))} placeholder="발생금액" className="h-12 w-full rounded-2xl bg-slate-800 px-4 text-white outline-none" />
         {!editing && <input inputMode="numeric" value={paid} onChange={(e) => setPaid(e.target.value.replace(/[^0-9]/g, ""))} placeholder="입금금액(있으면)" className="h-12 w-full rounded-2xl bg-slate-800 px-4 text-white outline-none" />}
         <input value={memo} onChange={(e) => setMemo(e.target.value)} placeholder="메모" className="h-12 w-full rounded-2xl bg-slate-800 px-4 text-white outline-none" />
